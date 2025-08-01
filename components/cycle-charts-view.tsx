@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, BarChart, Bar, ScatterChart, Scatter, Cell } from "recharts"
 import type { IVFCycle } from "@/lib/types"
-import { TrendingUp, Activity, Droplet, TestTube } from "lucide-react"
+import { TrendingUp, Activity, Droplet, TestTube, Target } from "lucide-react"
 
 interface CycleChartsViewProps {
   cycle: IVFCycle
@@ -108,6 +108,110 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     return scatterData.sort((a, b) => a.day - b.day)
   }, [cycle.days])
 
+  // Process outcome funnel data
+  const outcomeData = useMemo(() => {
+    if (!cycle.outcome) return []
+
+    const stages = [
+      { name: "Eggs Retrieved", value: cycle.outcome.eggsRetrieved || 0, fill: "hsl(var(--chart-1))" },
+      { name: "Mature Eggs", value: cycle.outcome.matureEggs || 0, fill: "hsl(var(--chart-2))" },
+      { name: "Fertilized", value: cycle.outcome.fertilized || 0, fill: "hsl(var(--chart-3))" },
+      { name: "Day 3 Embryos", value: cycle.outcome.day3Embryos || 0, fill: "hsl(var(--chart-4))" },
+      { name: "Day 5 Blastocysts", value: cycle.outcome.day5Blasts || 0, fill: "hsl(var(--chart-5))" },
+    ]
+
+    // Only include stages with values > 0
+    return stages.filter((stage) => stage.value > 0)
+  }, [cycle.outcome])
+
+  // Process outcome bar chart data with percentages
+  const outcomeBarData = useMemo(() => {
+    if (!cycle.outcome) return []
+
+    const outcome = cycle.outcome
+    const eggsRetrieved = outcome.eggsRetrieved || 0
+
+    if (eggsRetrieved === 0) return []
+
+    const data = []
+
+    if (outcome.matureEggs !== undefined) {
+      data.push({
+        stage: "Mature Eggs",
+        count: outcome.matureEggs,
+        percentage: Math.round((outcome.matureEggs / eggsRetrieved) * 100),
+        fill: "hsl(var(--chart-1))",
+      })
+    }
+
+    if (outcome.fertilized !== undefined) {
+      data.push({
+        stage: "Fertilized",
+        count: outcome.fertilized,
+        percentage: Math.round((outcome.fertilized / eggsRetrieved) * 100),
+        fill: "hsl(var(--chart-2))",
+      })
+    }
+
+    if (outcome.day3Embryos !== undefined) {
+      data.push({
+        stage: "Day 3 Embryos",
+        count: outcome.day3Embryos,
+        percentage: Math.round((outcome.day3Embryos / eggsRetrieved) * 100),
+        fill: "hsl(var(--chart-3))",
+      })
+    }
+
+    if (outcome.day5Blasts !== undefined) {
+      data.push({
+        stage: "Day 5 Blasts",
+        count: outcome.day5Blasts,
+        percentage: Math.round((outcome.day5Blasts / eggsRetrieved) * 100),
+        fill: "hsl(var(--chart-4))",
+      })
+    }
+
+    if (outcome.pgtNormal !== undefined && outcome.pgtTested !== undefined && outcome.pgtTested > 0) {
+      data.push({
+        stage: "PGT Normal",
+        count: outcome.pgtNormal,
+        percentage: Math.round((outcome.pgtNormal / outcome.pgtTested) * 100),
+        fill: "hsl(var(--chart-5))",
+      })
+    }
+
+    return data
+  }, [cycle.outcome])
+
+  // Calculate dropoff data
+  const dropoffData = useMemo(() => {
+    if (!cycle.outcome) return []
+
+    const outcome = cycle.outcome
+    const stages = [
+      { name: "Eggs Retrieved", value: outcome.eggsRetrieved || 0 },
+      { name: "Mature Eggs", value: outcome.matureEggs || 0 },
+      { name: "Fertilized", value: outcome.fertilized || 0 },
+      { name: "Day 3 Embryos", value: outcome.day3Embryos || 0 },
+      { name: "Day 5 Blasts", value: outcome.day5Blasts || 0 },
+    ]
+
+    const validStages = stages.filter((stage) => stage.value > 0)
+
+    return validStages.map((stage, index) => {
+      const previousValue = index > 0 ? validStages[index - 1].value : stage.value
+      const dropoff = index > 0 ? previousValue - stage.value : 0
+      const dropoffPercentage = index > 0 ? Math.round((dropoff / previousValue) * 100) : 0
+
+      return {
+        ...stage,
+        dropoff,
+        dropoffPercentage,
+        retentionPercentage: 100 - dropoffPercentage,
+      }
+    })
+  }, [cycle.outcome])
+
   const chartConfig = {
     leftCount: {
       label: "Left Ovary",
@@ -151,7 +255,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     },
   }
 
-  if (follicleGrowthData.length === 0 && hormoneData.length === 0) {
+  if (follicleGrowthData.length === 0 && hormoneData.length === 0 && outcomeData.length === 0) {
     return (
       <Card className="border-dashed">
         <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 text-center">
@@ -161,7 +265,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
           <div>
             <h3 className="text-lg font-medium">No chart data available</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Add follicle measurements and bloodwork results to see charts
+              Add follicle measurements, bloodwork results, and cycle outcomes to see charts
             </p>
           </div>
         </CardContent>
@@ -171,6 +275,252 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* Outcome Visualizations */}
+      {outcomeData.length > 0 && (
+        <>
+          {/* Outcome Funnel Chart */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Cycle Outcome Funnel</CardTitle>
+                  <CardDescription>Progression through each stage of the IVF process</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig}>
+                <BarChart data={outcomeData} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    type="category"
+                    dataKey="name"
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    width={80}
+                  />
+                  <ChartTooltip
+                    content={({ active, payload }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-background border rounded-lg shadow-lg p-3">
+                            <p className="font-medium">{data.name}</p>
+                            <p className="text-sm text-muted-foreground">Count: {data.value}</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                    {outcomeData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* Success Rate Bar Chart */}
+          {outcomeBarData.length > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>Success Rates by Stage</CardTitle>
+                    <CardDescription>Percentage of eggs/embryos progressing to each stage</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig}>
+                  <BarChart data={outcomeBarData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis
+                      dataKey="stage"
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "Percentage (%)", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">{data.stage}</p>
+                              <p className="text-sm text-muted-foreground">Count: {data.count}</p>
+                              <p className="text-sm text-muted-foreground">Success Rate: {data.percentage}%</p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
+                      {outcomeBarData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.fill} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Dropoff Analysis */}
+          {dropoffData.length > 1 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Activity className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>Stage-by-Stage Analysis</CardTitle>
+                    <CardDescription>Detailed breakdown of progression and dropoff at each stage</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {dropoffData.map((stage, index) => (
+                    <div key={stage.name} className="flex items-center justify-between p-4 border rounded-lg">
+                      <div className="flex-1">
+                        <h4 className="font-medium">{stage.name}</h4>
+                        <p className="text-sm text-muted-foreground">
+                          {stage.value} {stage.name.toLowerCase()}
+                          {index > 0 && (
+                            <span className="ml-2">({stage.retentionPercentage}% retention from previous stage)</span>
+                          )}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold">{stage.value}</div>
+                        {index > 0 && stage.dropoff > 0 && (
+                          <div className="text-sm text-red-600">
+                            -{stage.dropoff} ({stage.dropoffPercentage}% loss)
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* PGT Testing Results */}
+          {cycle.outcome?.pgtTested && cycle.outcome.pgtTested > 0 && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <TestTube className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>PGT Testing Results</CardTitle>
+                    <CardDescription>Genetic testing outcomes</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="text-center p-4 border rounded-lg">
+                    <div className="text-2xl font-bold text-blue-600">{cycle.outcome.pgtTested}</div>
+                    <p className="text-sm text-muted-foreground">Embryos Tested</p>
+                  </div>
+
+                  {cycle.outcome.pgtNormal !== undefined && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">{cycle.outcome.pgtNormal}</div>
+                      <p className="text-sm text-muted-foreground">
+                        Normal Results ({Math.round((cycle.outcome.pgtNormal / cycle.outcome.pgtTested) * 100)}%)
+                      </p>
+                    </div>
+                  )}
+
+                  {cycle.outcome.pgtNormal !== undefined && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">
+                        {cycle.outcome.pgtTested - cycle.outcome.pgtNormal}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        Abnormal Results (
+                        {Math.round(
+                          ((cycle.outcome.pgtTested - cycle.outcome.pgtNormal) / cycle.outcome.pgtTested) * 100,
+                        )}
+                        %)
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Transfer and Storage Summary */}
+          {(cycle.outcome?.transferred || cycle.outcome?.frozen) && (
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Target className="h-5 w-5 text-primary" />
+                  <div>
+                    <CardTitle>Embryo Disposition</CardTitle>
+                    <CardDescription>How embryos were used or stored</CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {cycle.outcome.transferred && cycle.outcome.transferred > 0 && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600">{cycle.outcome.transferred}</div>
+                      <p className="text-sm text-muted-foreground">Embryos Transferred</p>
+                    </div>
+                  )}
+
+                  {cycle.outcome.frozen && cycle.outcome.frozen > 0 && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
+                      <p className="text-sm text-muted-foreground">Embryos Frozen</p>
+                    </div>
+                  )}
+                </div>
+
+                {cycle.outcome.outcome && (
+                  <div className="mt-4 text-center p-4 border rounded-lg">
+                    <div
+                      className={`text-2xl font-bold capitalize ${
+                        cycle.outcome.outcome === "positive" || cycle.outcome.outcome === "ongoing"
+                          ? "text-green-600"
+                          : cycle.outcome.outcome === "negative"
+                            ? "text-red-600"
+                            : "text-yellow-600"
+                      }`}
+                    >
+                      {cycle.outcome.outcome}
+                    </div>
+                    <p className="text-sm text-muted-foreground">Pregnancy Outcome</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </>
+      )}
+
       {follicleGrowthData.length > 0 && (
         <>
           {/* Follicle Count Chart */}
