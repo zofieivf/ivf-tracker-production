@@ -1,916 +1,408 @@
 "use client"
 
-import { useMemo } from "react"
-import { format, parseISO } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { ChartTooltip } from "@/components/ui/chart"
-import {
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  BarChart,
-  Bar,
-  ScatterChart,
-  Scatter,
-  Cell,
-  ResponsiveContainer,
-} from "recharts"
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
+import { Badge } from "@/components/ui/badge"
+import { BarChart, Bar, LineChart, Line, ScatterChart, Scatter, XAxis, YAxis, CartesianGrid } from "recharts"
 import type { IVFCycle } from "@/lib/types"
-import { TrendingUp, Activity, Droplet, TestTube, Target } from "lucide-react"
 
 interface CycleChartsViewProps {
   cycle: IVFCycle
 }
 
 export function CycleChartsView({ cycle }: CycleChartsViewProps) {
-  // Process follicle growth data
-  const follicleGrowthData = useMemo(() => {
-    return cycle.days
-      .filter((day) => day.follicleSizes)
-      .map((day) => {
-        const leftFollicles = day.follicleSizes?.left || []
-        const rightFollicles = day.follicleSizes?.right || []
-        const allFollicles = [...leftFollicles, ...rightFollicles]
+  // Process follicle data
+  const follicleData = cycle.days
+    .filter((day) => day.follicleSizes)
+    .map((day) => ({
+      day: day.cycleDay,
+      date: day.date,
+      leftCount: day.follicleSizes!.left.length,
+      rightCount: day.follicleSizes!.right.length,
+      totalCount: day.follicleSizes!.left.length + day.follicleSizes!.right.length,
+      avgLeft:
+        day.follicleSizes!.left.length > 0
+          ? day.follicleSizes!.left.reduce((a, b) => a + b, 0) / day.follicleSizes!.left.length
+          : 0,
+      avgRight:
+        day.follicleSizes!.right.length > 0
+          ? day.follicleSizes!.right.reduce((a, b) => a + b, 0) / day.follicleSizes!.right.length
+          : 0,
+      maxLeft: day.follicleSizes!.left.length > 0 ? Math.max(...day.follicleSizes!.left) : 0,
+      maxRight: day.follicleSizes!.right.length > 0 ? Math.max(...day.follicleSizes!.right) : 0,
+      liningThickness: day.follicleSizes!.liningThickness || 0,
+    }))
 
-        return {
-          day: day.cycleDay,
-          date: format(parseISO(day.date), "MMM d"),
-          leftCount: leftFollicles.length,
-          rightCount: rightFollicles.length,
-          totalCount: allFollicles.length,
-          averageSize:
-            allFollicles.length > 0
-              ? Math.round((allFollicles.reduce((sum, size) => sum + size, 0) / allFollicles.length) * 10) / 10
-              : 0,
-          maxSize: allFollicles.length > 0 ? Math.max(...allFollicles) : 0,
-          liningThickness: day.follicleSizes?.liningThickness || 0,
-          leftSizes: leftFollicles,
-          rightSizes: rightFollicles,
-        }
-      })
-      .sort((a, b) => a.day - b.day)
-  }, [cycle.days])
+  // Process individual follicle data for scatter plot
+  const individualFollicles = cycle.days
+    .filter((day) => day.follicleSizes)
+    .flatMap((day) => [
+      ...day.follicleSizes!.left.map((size) => ({
+        day: day.cycleDay,
+        size,
+        ovary: "Left",
+      })),
+      ...day.follicleSizes!.right.map((size) => ({
+        day: day.cycleDay,
+        size,
+        ovary: "Right",
+      })),
+    ])
 
   // Process hormone data
-  const hormoneData = useMemo(() => {
-    const hormoneMap = new Map<number, any>()
-
-    cycle.days
-      .filter((day) => day.bloodwork && day.bloodwork.length > 0)
-      .forEach((day) => {
-        const dayData = {
-          day: day.cycleDay,
-          date: format(parseISO(day.date), "MMM d"),
+  const hormoneData = cycle.days
+    .filter((day) => day.bloodwork && day.bloodwork.length > 0)
+    .map((day) => {
+      const hormones: any = { day: day.cycleDay, date: day.date }
+      day.bloodwork!.forEach((result) => {
+        const value = Number.parseFloat(result.value)
+        if (!isNaN(value)) {
+          hormones[result.test] = value
         }
-
-        day.bloodwork?.forEach((result) => {
-          const value = Number.parseFloat(result.value)
-          if (!isNaN(value)) {
-            const testName = result.test.toLowerCase()
-            if (testName.includes("estradiol") || testName.includes("e2")) {
-              dayData.estradiol = value
-            } else if (testName.includes("lh")) {
-              dayData.lh = value
-            } else if (testName.includes("fsh")) {
-              dayData.fsh = value
-            } else if (testName.includes("progesterone")) {
-              dayData.progesterone = value
-            } else if (testName.includes("hcg") || testName.includes("beta")) {
-              dayData.hcg = value
-            }
-          }
-        })
-
-        hormoneMap.set(day.cycleDay, { ...hormoneMap.get(day.cycleDay), ...dayData })
       })
-
-    return Array.from(hormoneMap.values()).sort((a, b) => a.day - b.day)
-  }, [cycle.days])
-
-  // Process individual follicle scatter data
-  const follicleScatterData = useMemo(() => {
-    const scatterData: Array<{ day: number; size: number; ovary: string; date: string }> = []
-
-    cycle.days
-      .filter((day) => day.follicleSizes)
-      .forEach((day) => {
-        const date = format(parseISO(day.date), "MMM d")
-
-        day.follicleSizes?.left.forEach((size) => {
-          scatterData.push({
-            day: day.cycleDay,
-            size,
-            ovary: "Left",
-            date,
-          })
-        })
-
-        day.follicleSizes?.right.forEach((size) => {
-          scatterData.push({
-            day: day.cycleDay,
-            size,
-            ovary: "Right",
-            date,
-          })
-        })
-      })
-
-    return scatterData.sort((a, b) => a.day - b.day)
-  }, [cycle.days])
-
-  // Process outcome funnel data
-  const outcomeData = useMemo(() => {
-    if (!cycle.outcome) return []
-
-    const stages = [
-      { name: "Eggs Retrieved", value: cycle.outcome.eggsRetrieved || 0, fill: "#3b82f6" },
-      { name: "Mature Eggs", value: cycle.outcome.matureEggs || 0, fill: "#10b981" },
-      { name: "Fertilized", value: cycle.outcome.fertilized || 0, fill: "#f59e0b" },
-      { name: "Day 3 Embryos", value: cycle.outcome.day3Embryos || 0, fill: "#ef4444" },
-      { name: "Day 5 Blastocysts", value: cycle.outcome.day5Blasts || 0, fill: "#8b5cf6" },
-    ]
-
-    // Only include stages with values > 0
-    return stages.filter((stage) => stage.value > 0)
-  }, [cycle.outcome])
-
-  // Process outcome bar chart data with percentages
-  const outcomeBarData = useMemo(() => {
-    if (!cycle.outcome) return []
-
-    const outcome = cycle.outcome
-    const eggsRetrieved = outcome.eggsRetrieved || 0
-
-    if (eggsRetrieved === 0) return []
-
-    const data = []
-
-    if (outcome.matureEggs !== undefined) {
-      data.push({
-        stage: "Mature Eggs",
-        count: outcome.matureEggs,
-        percentage: Math.round((outcome.matureEggs / eggsRetrieved) * 100),
-        fill: "#10b981",
-      })
-    }
-
-    if (outcome.fertilized !== undefined) {
-      data.push({
-        stage: "Fertilized",
-        count: outcome.fertilized,
-        percentage: Math.round((outcome.fertilized / eggsRetrieved) * 100),
-        fill: "#f59e0b",
-      })
-    }
-
-    if (outcome.day3Embryos !== undefined) {
-      data.push({
-        stage: "Day 3 Embryos",
-        count: outcome.day3Embryos,
-        percentage: Math.round((outcome.day3Embryos / eggsRetrieved) * 100),
-        fill: "#ef4444",
-      })
-    }
-
-    if (outcome.day5Blasts !== undefined) {
-      data.push({
-        stage: "Day 5 Blasts",
-        count: outcome.day5Blasts,
-        percentage: Math.round((outcome.day5Blasts / eggsRetrieved) * 100),
-        fill: "#8b5cf6",
-      })
-    }
-
-    if (outcome.pgtNormal !== undefined && outcome.pgtTested !== undefined && outcome.pgtTested > 0) {
-      data.push({
-        stage: "PGT Normal",
-        count: outcome.pgtNormal,
-        percentage: Math.round((outcome.pgtNormal / outcome.pgtTested) * 100),
-        fill: "#06b6d4",
-      })
-    }
-
-    return data
-  }, [cycle.outcome])
-
-  // Calculate dropoff data
-  const dropoffData = useMemo(() => {
-    if (!cycle.outcome) return []
-
-    const outcome = cycle.outcome
-    const stages = [
-      { name: "Eggs Retrieved", value: outcome.eggsRetrieved || 0 },
-      { name: "Mature Eggs", value: outcome.matureEggs || 0 },
-      { name: "Fertilized", value: outcome.fertilized || 0 },
-      { name: "Day 3 Embryos", value: outcome.day3Embryos || 0 },
-      { name: "Day 5 Blasts", value: outcome.day5Blasts || 0 },
-    ]
-
-    const validStages = stages.filter((stage) => stage.value > 0)
-
-    return validStages.map((stage, index) => {
-      const previousValue = index > 0 ? validStages[index - 1].value : stage.value
-      const dropoff = index > 0 ? previousValue - stage.value : 0
-      const dropoffPercentage = index > 0 ? Math.round((dropoff / previousValue) * 100) : 0
-
-      return {
-        ...stage,
-        dropoff,
-        dropoffPercentage,
-        retentionPercentage: 100 - dropoffPercentage,
-      }
+      return hormones
     })
-  }, [cycle.outcome])
 
-  const chartConfig = {
-    leftCount: {
-      label: "Left Ovary",
-      color: "#3b82f6",
-    },
-    rightCount: {
-      label: "Right Ovary",
-      color: "#10b981",
-    },
-    averageSize: {
-      label: "Average Size",
-      color: "#f59e0b",
-    },
-    maxSize: {
-      label: "Largest Follicle",
-      color: "#ef4444",
-    },
-    liningThickness: {
-      label: "Lining Thickness",
-      color: "#8b5cf6",
-    },
-    estradiol: {
-      label: "Estradiol",
-      color: "#3b82f6",
-    },
-    lh: {
-      label: "LH",
-      color: "#10b981",
-    },
-    fsh: {
-      label: "FSH",
-      color: "#f59e0b",
-    },
-    progesterone: {
-      label: "Progesterone",
-      color: "#ef4444",
-    },
-    hcg: {
-      label: "hCG",
-      color: "#8b5cf6",
-    },
+  // Get unique hormone types
+  const hormoneTypes = Array.from(
+    new Set(cycle.days.filter((day) => day.bloodwork).flatMap((day) => day.bloodwork!.map((result) => result.test))),
+  )
+
+  // Process outcome data for funnel chart
+  const processOutcomeData = () => {
+    if (!cycle.outcome) return []
+
+    const stages = []
+    if (cycle.outcome.eggsRetrieved) {
+      stages.push({ stage: "Eggs Retrieved", count: cycle.outcome.eggsRetrieved, color: "#3b82f6" })
+    }
+    if (cycle.outcome.matureEggs) {
+      stages.push({ stage: "Mature Eggs", count: cycle.outcome.matureEggs, color: "#10b981" })
+    }
+    if (cycle.outcome.fertilized) {
+      stages.push({ stage: "Fertilized", count: cycle.outcome.fertilized, color: "#f59e0b" })
+    }
+    if (cycle.outcome.day3Embryos) {
+      stages.push({ stage: "Day 3 Embryos", count: cycle.outcome.day3Embryos, color: "#8b5cf6" })
+    }
+    if (cycle.outcome.day5Blasts) {
+      stages.push({ stage: "Day 5 Blastocysts", count: cycle.outcome.day5Blasts, color: "#ef4444" })
+    }
+    if (cycle.outcome.pgtNormal) {
+      stages.push({ stage: "PGT Normal", count: cycle.outcome.pgtNormal, color: "#06b6d4" })
+    }
+
+    return stages
   }
 
-  if (follicleGrowthData.length === 0 && hormoneData.length === 0 && outcomeData.length === 0) {
+  const outcomeData = processOutcomeData()
+
+  // Calculate success rates
+  const calculateSuccessRates = () => {
+    if (!cycle.outcome || !cycle.outcome.eggsRetrieved) return []
+
+    const initial = cycle.outcome.eggsRetrieved
+    const stages = []
+
+    if (cycle.outcome.matureEggs) {
+      stages.push({
+        stage: "Maturation Rate",
+        percentage: Math.round((cycle.outcome.matureEggs / initial) * 100),
+        color: "#10b981",
+      })
+    }
+    if (cycle.outcome.fertilized) {
+      stages.push({
+        stage: "Fertilization Rate",
+        percentage: Math.round((cycle.outcome.fertilized / initial) * 100),
+        color: "#f59e0b",
+      })
+    }
+    if (cycle.outcome.day5Blasts) {
+      stages.push({
+        stage: "Blastocyst Rate",
+        percentage: Math.round((cycle.outcome.day5Blasts / initial) * 100),
+        color: "#ef4444",
+      })
+    }
+    if (cycle.outcome.pgtNormal) {
+      stages.push({
+        stage: "PGT Normal Rate",
+        percentage: Math.round((cycle.outcome.pgtNormal / initial) * 100),
+        color: "#06b6d4",
+      })
+    }
+
+    return stages
+  }
+
+  const successRates = calculateSuccessRates()
+
+  // Chart configurations
+  const chartConfig = {
+    leftCount: { label: "Left Ovary", color: "#3b82f6" },
+    rightCount: { label: "Right Ovary", color: "#10b981" },
+    totalCount: { label: "Total Follicles", color: "#8b5cf6" },
+    avgSize: { label: "Average Size", color: "#f59e0b" },
+    maxSize: { label: "Max Size", color: "#ef4444" },
+    liningThickness: { label: "Lining Thickness", color: "#06b6d4" },
+  }
+
+  const hasFollicleData = follicleData.length > 0
+  const hasHormoneData = hormoneData.length > 0
+  const hasOutcomeData = outcomeData.length > 0
+  const hasIndividualFollicles = individualFollicles.length > 0
+
+  // Summary statistics
+  const summaryStats = {
+    peakFollicleCount: Math.max(...follicleData.map((d) => d.totalCount), 0),
+    largestFollicle: Math.max(...individualFollicles.map((f) => f.size), 0),
+    maxLining: Math.max(...follicleData.map((d) => d.liningThickness), 0),
+  }
+
+  if (!hasFollicleData && !hasHormoneData && !hasOutcomeData) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 text-center">
-          <div className="rounded-full bg-primary/10 p-3">
-            <Activity className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">No chart data available</h3>
-            <p className="text-sm text-muted-foreground mt-1">
-              Add follicle measurements, bloodwork results, and cycle outcomes to see charts
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+      <div className="text-center py-12">
+        <p className="text-muted-foreground">No chart data available yet.</p>
+        <p className="text-sm text-muted-foreground mt-2">
+          Add follicle measurements, bloodwork results, or cycle outcomes to see visualizations.
+        </p>
+      </div>
     )
   }
 
   return (
     <div className="space-y-6">
-      {/* Outcome Visualizations */}
-      {outcomeData.length > 0 && (
-        <>
-          {/* Outcome Funnel Chart */}
+      {/* Summary Stats */}
+      {(hasFollicleData || hasOutcomeData) && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {hasFollicleData && (
+            <>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{summaryStats.peakFollicleCount}</div>
+                  <p className="text-sm text-muted-foreground">Peak Follicle Count</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{summaryStats.largestFollicle.toFixed(1)} mm</div>
+                  <p className="text-sm text-muted-foreground">Largest Follicle</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4">
+                  <div className="text-2xl font-bold">{summaryStats.maxLining.toFixed(1)} mm</div>
+                  <p className="text-sm text-muted-foreground">Max Lining Thickness</p>
+                </CardContent>
+              </Card>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Outcome Charts */}
+      {hasOutcomeData && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Outcome Funnel */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-primary" />
-                <div>
-                  <CardTitle>Cycle Outcome Funnel</CardTitle>
-                  <CardDescription>Progression through each stage of the IVF process</CardDescription>
-                </div>
-              </div>
+              <CardTitle>Cycle Outcome Funnel</CardTitle>
+              <CardDescription>Progression through IVF stages</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="w-full h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={outcomeData} layout="horizontal" margin={{ top: 20, right: 30, left: 80, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis
-                      type="category"
-                      dataKey="name"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      width={80}
-                    />
-                    <ChartTooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-background border rounded-lg shadow-lg p-3">
-                              <p className="font-medium">{data.name}</p>
-                              <p className="text-sm text-muted-foreground">Count: {data.value}</p>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
-                      {outcomeData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <BarChart data={outcomeData} layout="horizontal">
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis type="number" />
+                  <YAxis dataKey="stage" type="category" width={100} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="count" fill="#3b82f6" />
+                </BarChart>
+              </ChartContainer>
             </CardContent>
           </Card>
 
-          {/* Success Rate Bar Chart */}
-          {outcomeBarData.length > 0 && (
+          {/* Success Rates */}
+          {successRates.length > 0 && (
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Success Rates by Stage</CardTitle>
-                    <CardDescription>Percentage of eggs/embryos progressing to each stage</CardDescription>
-                  </div>
-                </div>
+                <CardTitle>Success Rates by Stage</CardTitle>
+                <CardDescription>Percentage success at each stage</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="w-full h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={outcomeBarData} margin={{ top: 20, right: 30, left: 20, bottom: 80 }}>
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis
-                        dataKey="stage"
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        angle={-45}
-                        textAnchor="end"
-                        height={80}
-                      />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        label={{ value: "Percentage (%)", angle: -90, position: "insideLeft" }}
-                      />
-                      <ChartTooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload
-                            return (
-                              <div className="bg-background border rounded-lg shadow-lg p-3">
-                                <p className="font-medium">{data.stage}</p>
-                                <p className="text-sm text-muted-foreground">Count: {data.count}</p>
-                                <p className="text-sm text-muted-foreground">Success Rate: {data.percentage}%</p>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                      <Bar dataKey="percentage" radius={[4, 4, 0, 0]}>
-                        {outcomeBarData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.fill} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <BarChart data={successRates}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="stage" />
+                    <YAxis />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="percentage" fill="#10b981" />
+                  </BarChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           )}
 
-          {/* Dropoff Analysis */}
-          {dropoffData.length > 1 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Stage-by-Stage Analysis</CardTitle>
-                    <CardDescription>Detailed breakdown of progression and dropoff at each stage</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {dropoffData.map((stage, index) => (
-                    <div key={stage.name} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex-1">
-                        <h4 className="font-medium">{stage.name}</h4>
-                        <p className="text-sm text-muted-foreground">
-                          {stage.value} {stage.name.toLowerCase()}
-                          {index > 0 && (
-                            <span className="ml-2">({stage.retentionPercentage}% retention from previous stage)</span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="text-right">
-                        <div className="text-2xl font-bold">{stage.value}</div>
-                        {index > 0 && stage.dropoff > 0 && (
-                          <div className="text-sm text-red-600">
-                            -{stage.dropoff} ({stage.dropoffPercentage}% loss)
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* PGT Testing Results */}
-          {cycle.outcome?.pgtTested && cycle.outcome.pgtTested > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <TestTube className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>PGT Testing Results</CardTitle>
-                    <CardDescription>Genetic testing outcomes</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{cycle.outcome.pgtTested}</div>
-                    <p className="text-sm text-muted-foreground">Embryos Tested</p>
-                  </div>
-
-                  {cycle.outcome.pgtNormal !== undefined && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{cycle.outcome.pgtNormal}</div>
-                      <p className="text-sm text-muted-foreground">
-                        Normal Results ({Math.round((cycle.outcome.pgtNormal / cycle.outcome.pgtTested) * 100)}%)
-                      </p>
-                    </div>
-                  )}
-
-                  {cycle.outcome.pgtNormal !== undefined && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
-                        {cycle.outcome.pgtTested - cycle.outcome.pgtNormal}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Abnormal Results (
-                        {Math.round(
-                          ((cycle.outcome.pgtTested - cycle.outcome.pgtNormal) / cycle.outcome.pgtTested) * 100,
-                        )}
-                        %)
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Transfer and Storage Summary */}
-          {(cycle.outcome?.transferred || cycle.outcome?.frozen) && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Target className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Embryo Disposition</CardTitle>
-                    <CardDescription>How embryos were used or stored</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {cycle.outcome.transferred && cycle.outcome.transferred > 0 && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{cycle.outcome.transferred}</div>
-                      <p className="text-sm text-muted-foreground">Embryos Transferred</p>
-                    </div>
-                  )}
-
-                  {cycle.outcome.frozen && cycle.outcome.frozen > 0 && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
-                      <p className="text-sm text-muted-foreground">Embryos Frozen</p>
-                    </div>
-                  )}
-                </div>
-
-                {cycle.outcome.outcome && (
-                  <div className="mt-4 text-center p-4 border rounded-lg">
-                    <div
-                      className={`text-2xl font-bold capitalize ${
-                        cycle.outcome.outcome === "positive" || cycle.outcome.outcome === "ongoing"
-                          ? "text-green-600"
-                          : cycle.outcome.outcome === "negative"
-                            ? "text-red-600"
-                            : "text-yellow-600"
-                      }`}
-                    >
-                      {cycle.outcome.outcome}
-                    </div>
-                    <p className="text-sm text-muted-foreground">Pregnancy Outcome</p>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          )}
-        </>
-      )}
-
-      {follicleGrowthData.length > 0 && (
-        <>
-          {/* Follicle Count Chart */}
-          <Card>
+          {/* Stage-by-Stage Analysis */}
+          <Card className="md:col-span-2">
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <Droplet className="h-5 w-5 text-primary" />
-                <div>
-                  <CardTitle>Follicle Count by Ovary</CardTitle>
-                  <CardDescription>Number of follicles measured each day</CardDescription>
-                </div>
-              </div>
+              <CardTitle>Stage-by-Stage Analysis</CardTitle>
+              <CardDescription>Detailed breakdown of losses at each stage</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="w-full h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={follicleGrowthData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <ChartTooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-background border rounded-lg shadow-lg p-3">
-                              <p className="font-medium">
-                                Day {data.day} ({label})
-                              </p>
-                              {payload.map((entry: any, index: number) => (
-                                <p key={index} className="text-sm" style={{ color: entry.color }}>
-                                  {entry.name}: {entry.value}
-                                </p>
-                              ))}
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {outcomeData.map((stage, index) => {
+                  const prevStage = index > 0 ? outcomeData[index - 1] : null
+                  const dropoff = prevStage ? prevStage.count - stage.count : 0
+                  const retentionRate = prevStage ? Math.round((stage.count / prevStage.count) * 100) : 100
+
+                  return (
+                    <div key={stage.stage} className="border rounded-lg p-4">
+                      <h4 className="font-medium mb-2">{stage.stage}</h4>
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Count:</span>
+                          <span className="font-medium">{stage.count}</span>
+                        </div>
+                        {prevStage && (
+                          <>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Retention:</span>
+                              <Badge variant="outline" className="text-green-600">
+                                {retentionRate}%
+                              </Badge>
                             </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Bar dataKey="leftCount" fill={chartConfig.leftCount.color} name="Left Ovary" />
-                    <Bar dataKey="rightCount" fill={chartConfig.rightCount.color} name="Right Ovary" />
-                  </BarChart>
-                </ResponsiveContainer>
+                            <div className="flex justify-between">
+                              <span className="text-sm text-muted-foreground">Lost:</span>
+                              <span className="text-sm text-red-600">-{dropoff}</span>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Follicle Charts */}
+      {hasFollicleData && (
+        <div className="grid gap-6 md:grid-cols-2">
+          {/* Follicle Count by Ovary */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Follicle Count by Ovary</CardTitle>
+              <CardDescription>Number of follicles measured each day</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <BarChart data={follicleData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="leftCount" fill="#3b82f6" name="Left Ovary" />
+                  <Bar dataKey="rightCount" fill="#10b981" name="Right Ovary" />
+                </BarChart>
+              </ChartContainer>
             </CardContent>
           </Card>
 
           {/* Follicle Size Trends */}
           <Card>
             <CardHeader>
-              <div className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-primary" />
-                <div>
-                  <CardTitle>Follicle Size Trends</CardTitle>
-                  <CardDescription>Average and maximum follicle sizes over time</CardDescription>
-                </div>
-              </div>
+              <CardTitle>Follicle Size Trends</CardTitle>
+              <CardDescription>Average and maximum follicle sizes over time</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="w-full h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={follicleGrowthData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      label={{ value: "Size (mm)", angle: -90, position: "insideLeft" }}
-                    />
-                    <ChartTooltip
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-background border rounded-lg shadow-lg p-3">
-                              <p className="font-medium">
-                                Day {data.day} ({label})
-                              </p>
-                              {payload.map((entry: any, index: number) => (
-                                <p key={index} className="text-sm" style={{ color: entry.stroke }}>
-                                  {entry.name}: {entry.value}mm
-                                </p>
-                              ))}
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="averageSize"
-                      stroke={chartConfig.averageSize.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="Average Size"
-                    />
-                    <Line
-                      type="monotone"
-                      dataKey="maxSize"
-                      stroke={chartConfig.maxSize.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="Largest Follicle"
-                    />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <LineChart data={follicleData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="avgLeft" stroke="#3b82f6" name="Avg Left" />
+                  <Line type="monotone" dataKey="avgRight" stroke="#10b981" name="Avg Right" />
+                  <Line type="monotone" dataKey="maxLeft" stroke="#f59e0b" name="Max Left" strokeDasharray="5 5" />
+                  <Line type="monotone" dataKey="maxRight" stroke="#ef4444" name="Max Right" strokeDasharray="5 5" />
+                </LineChart>
+              </ChartContainer>
             </CardContent>
           </Card>
 
-          {/* Individual Follicle Scatter Plot */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <TestTube className="h-5 w-5 text-primary" />
-                <div>
-                  <CardTitle>Individual Follicle Sizes</CardTitle>
-                  <CardDescription>Size of each measured follicle by ovary</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="w-full h-[350px]">
-                <ResponsiveContainer width="100%" height="100%">
-                  <ScatterChart data={follicleScatterData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis
-                      type="number"
-                      dataKey="day"
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      label={{ value: "Cycle Day", position: "insideBottom", offset: -10 }}
-                    />
-                    <YAxis
-                      tick={{ fontSize: 12 }}
-                      tickLine={false}
-                      axisLine={false}
-                      label={{ value: "Size (mm)", angle: -90, position: "insideLeft" }}
-                    />
-                    <ChartTooltip
-                      content={({ active, payload }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload
-                          return (
-                            <div className="bg-background border rounded-lg shadow-lg p-3">
-                              <p className="font-medium">{`Day ${data.day} (${data.date})`}</p>
-                              <p className="text-sm text-muted-foreground">{`${data.ovary} Ovary: ${data.size}mm`}</p>
-                            </div>
-                          )
-                        }
-                        return null
-                      }}
-                    />
-                    <Scatter dataKey="size" name="Follicle Size">
-                      {follicleScatterData.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={entry.ovary === "Left" ? chartConfig.leftCount.color : chartConfig.rightCount.color}
-                        />
-                      ))}
-                    </Scatter>
-                  </ScatterChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Endometrial Lining Thickness */}
-          {follicleGrowthData.some((d) => d.liningThickness > 0) && (
+          {/* Individual Follicle Sizes */}
+          {hasIndividualFollicles && (
             <Card>
               <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Activity className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>Endometrial Lining Thickness</CardTitle>
-                    <CardDescription>Lining thickness measurements over time</CardDescription>
-                  </div>
-                </div>
+                <CardTitle>Individual Follicle Sizes</CardTitle>
+                <CardDescription>Each follicle measurement by day</CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="w-full h-[350px]">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart
-                      data={follicleGrowthData.filter((d) => d.liningThickness > 0)}
-                      margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-                    >
-                      <CartesianGrid strokeDasharray="3 3" />
-                      <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                      <YAxis
-                        tick={{ fontSize: 12 }}
-                        tickLine={false}
-                        axisLine={false}
-                        label={{ value: "Thickness (mm)", angle: -90, position: "insideLeft" }}
-                      />
-                      <ChartTooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload
-                            return (
-                              <div className="bg-background border rounded-lg shadow-lg p-3">
-                                <p className="font-medium">
-                                  Day {data.day} ({label})
-                                </p>
-                                <p className="text-sm text-muted-foreground">
-                                  Lining Thickness: {data.liningThickness}mm
-                                </p>
-                              </div>
-                            )
-                          }
-                          return null
-                        }}
-                      />
-                      <Line
-                        type="monotone"
-                        dataKey="liningThickness"
-                        stroke={chartConfig.liningThickness.color}
-                        strokeWidth={3}
-                        dot={{ r: 5 }}
-                        name="Lining Thickness"
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
+                <ChartContainer config={chartConfig} className="h-[300px]">
+                  <ScatterChart data={individualFollicles}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="day" />
+                    <YAxis dataKey="size" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Scatter dataKey="size" fill="#3b82f6" />
+                  </ScatterChart>
+                </ChartContainer>
               </CardContent>
             </Card>
           )}
-        </>
-      )}
 
-      {/* Hormone Level Charts */}
-      {hormoneData.length > 0 && (
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Activity className="h-5 w-5 text-primary" />
-              <div>
-                <CardTitle>Hormone Levels</CardTitle>
-                <CardDescription>Hormone level trends throughout the cycle</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="w-full h-[350px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={hormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+          {/* Endometrial Lining */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Endometrial Lining Thickness</CardTitle>
+              <CardDescription>Lining thickness progression</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-[300px]">
+                <LineChart data={follicleData.filter((d) => d.liningThickness > 0)}>
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
-                  <YAxis
-                    tick={{ fontSize: 12 }}
-                    tickLine={false}
-                    axisLine={false}
-                    label={{ value: "Level", angle: -90, position: "insideLeft" }}
-                  />
-                  <ChartTooltip
-                    content={({ active, payload, label }) => {
-                      if (active && payload && payload.length) {
-                        const data = payload[0].payload
-                        return (
-                          <div className="bg-background border rounded-lg shadow-lg p-3">
-                            <p className="font-medium">
-                              Day {data.day} ({label})
-                            </p>
-                            {payload.map((entry: any, index: number) => (
-                              <p key={index} className="text-sm" style={{ color: entry.stroke }}>
-                                {entry.name}: {entry.value}
-                              </p>
-                            ))}
-                          </div>
-                        )
-                      }
-                      return null
-                    }}
-                  />
-                  {hormoneData.some((d) => d.estradiol !== undefined) && (
-                    <Line
-                      type="monotone"
-                      dataKey="estradiol"
-                      stroke={chartConfig.estradiol.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="Estradiol"
-                      connectNulls={false}
-                    />
-                  )}
-                  {hormoneData.some((d) => d.lh !== undefined) && (
-                    <Line
-                      type="monotone"
-                      dataKey="lh"
-                      stroke={chartConfig.lh.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="LH"
-                      connectNulls={false}
-                    />
-                  )}
-                  {hormoneData.some((d) => d.fsh !== undefined) && (
-                    <Line
-                      type="monotone"
-                      dataKey="fsh"
-                      stroke={chartConfig.fsh.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="FSH"
-                      connectNulls={false}
-                    />
-                  )}
-                  {hormoneData.some((d) => d.progesterone !== undefined) && (
-                    <Line
-                      type="monotone"
-                      dataKey="progesterone"
-                      stroke={chartConfig.progesterone.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="Progesterone"
-                      connectNulls={false}
-                    />
-                  )}
-                  {hormoneData.some((d) => d.hcg !== undefined) && (
-                    <Line
-                      type="monotone"
-                      dataKey="hcg"
-                      stroke={chartConfig.hcg.color}
-                      strokeWidth={2}
-                      dot={{ r: 4 }}
-                      name="hCG"
-                      connectNulls={false}
-                    />
-                  )}
+                  <XAxis dataKey="day" />
+                  <YAxis />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="liningThickness" stroke="#06b6d4" name="Lining Thickness" />
                 </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* Summary Statistics */}
-      {follicleGrowthData.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Peak Follicle Count</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{Math.max(...follicleGrowthData.map((d) => d.totalCount))}</div>
-              <p className="text-xs text-muted-foreground">Maximum follicles measured in one day</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Largest Follicle</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{Math.max(...follicleGrowthData.map((d) => d.maxSize))} mm</div>
-              <p className="text-xs text-muted-foreground">Largest follicle size recorded</p>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Peak Lining</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {Math.max(...follicleGrowthData.map((d) => d.liningThickness))} mm
-              </div>
-              <p className="text-xs text-muted-foreground">Maximum lining thickness</p>
+              </ChartContainer>
             </CardContent>
           </Card>
         </div>
+      )}
+
+      {/* Hormone Charts */}
+      {hasHormoneData && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Hormone Levels</CardTitle>
+            <CardDescription>Hormone trends throughout the cycle</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ChartContainer config={chartConfig} className="h-[400px]">
+              <LineChart data={hormoneData}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="day" />
+                <YAxis />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                {hormoneTypes.map((hormone, index) => (
+                  <Line
+                    key={hormone}
+                    type="monotone"
+                    dataKey={hormone}
+                    stroke={`hsl(${(index * 60) % 360}, 70%, 50%)`}
+                    name={hormone}
+                  />
+                ))}
+              </LineChart>
+            </ChartContainer>
+          </CardContent>
+        </Card>
       )}
     </div>
   )
