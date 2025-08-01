@@ -1,0 +1,104 @@
+"use client"
+
+import Link from "next/link"
+import { format, parseISO } from "date-fns"
+import { Card, CardContent, CardFooter } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Pill, Droplet, Stethoscope, FileText, Plus } from "lucide-react"
+import type { CycleDay } from "@/lib/types"
+
+interface DayCardProps {
+  day: CycleDay
+  cycleId: string
+  isPlaceholder?: boolean
+}
+
+export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
+  const hasMedications = day.medications && day.medications.length > 0
+  const hasClinicVisit = !!day.clinicVisit
+  const hasFollicleSizes = !!day.follicleSizes
+  const hasBloodwork = !!day.bloodwork && day.bloodwork.length > 0
+  const hasNotes = !!day.notes
+
+  const hasData = hasMedications || hasClinicVisit || hasFollicleSizes || hasBloodwork || hasNotes
+
+  return (
+    <Card className={isPlaceholder ? "border-dashed" : ""}>
+      <CardContent className="p-4">
+        <div className="flex justify-between items-center mb-3">
+          <div className="flex items-center gap-2">
+            <Badge variant="outline" className="rounded-full px-2 py-0 h-6">
+              Day {day.cycleDay}
+            </Badge>
+            <span className="text-sm text-muted-foreground">{format(parseISO(day.date), "EEE, MMM d")}</span>
+          </div>
+        </div>
+
+        {hasData ? (
+          <div className="space-y-2">
+            {hasMedications && (
+              <div className="flex items-center gap-2">
+                <Pill className="h-4 w-4 text-primary" />
+                <span className="text-sm">
+                  {day.medications.length} medication{day.medications.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+
+            {hasClinicVisit && (
+              <div className="flex items-center gap-2">
+                <Stethoscope className="h-4 w-4 text-primary" />
+                <span className="text-sm">{day.clinicVisit.type} visit</span>
+              </div>
+            )}
+
+            {hasFollicleSizes && (
+              <div className="flex items-center gap-2">
+                <Droplet className="h-4 w-4 text-primary" />
+                <span className="text-sm">
+                  {day.follicleSizes.left.length + day.follicleSizes.right.length} follicles
+                </span>
+              </div>
+            )}
+
+            {hasBloodwork && (
+              <div className="flex items-center gap-2">
+                <Droplet className="h-4 w-4 text-primary" />
+                <span className="text-sm">
+                  {day.bloodwork.length} bloodwork result{day.bloodwork.length !== 1 ? "s" : ""}
+                </span>
+              </div>
+            )}
+
+            {hasNotes && (
+              <div className="flex items-center gap-2">
+                <FileText className="h-4 w-4 text-primary" />
+                <span className="text-sm">Has notes</span>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="py-2 text-center text-sm text-muted-foreground">
+            {isPlaceholder ? "No data for this day" : "No data added yet"}
+          </div>
+        )}
+      </CardContent>
+
+      <CardFooter className="border-t p-2">
+        {isPlaceholder ? (
+          <Button variant="ghost" className="w-full justify-center" asChild>
+            <Link href={`/cycles/${cycleId}/days/new?day=${day.cycleDay}&date=${day.date}`}>
+              <Plus className="h-4 w-4 mr-2" />
+              Add data
+            </Link>
+          </Button>
+        ) : (
+          <Button variant="ghost" className="w-full justify-center" asChild>
+            <Link href={`/cycles/${cycleId}/days/${day.id}`}>View details</Link>
+          </Button>
+        )}
+      </CardFooter>
+    </Card>
+  )
+}
