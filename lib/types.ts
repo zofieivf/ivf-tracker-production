@@ -39,6 +39,8 @@ export interface IVFCycle {
   name: string
   startDate: string
   endDate?: string
+  dateOfBirth?: string
+  ageAtStart?: number
   cycleType: "standard" | "mini" | "natural" | "antagonist" | "long" | "other"
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]

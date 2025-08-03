@@ -1,49 +1,58 @@
 "use client"
+
+import type React from "react"
+
+import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { z } from "zod"
-import { zodResolver } from "@hookform/resolvers/zod"
-import { useForm } from "react-hook-form"
-import { format } from "date-fns"
-import { CalendarIcon } from "lucide-react"
+import { differenceInYears, format } from "date-fns"
+import { CalendarIcon, ArrowLeft } from "lucide-react"
+import Link from "next/link"
+
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { cn } from "@/lib/utils"
 import { useIVFStore } from "@/lib/store"
-import { v4 as uuidv4 } from "uuid"
-
-const formSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  startDate: z.date({
-    required_error: "Start date is required",
-  }),
-  cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
-    required_error: "Cycle type is required",
-  }),
-})
+import type { IVFCycle } from "@/lib/types"
 
 export default function NewCyclePage() {
   const router = useRouter()
   const { addCycle } = useIVFStore()
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: "",
-      cycleType: "standard",
-    },
-  })
+  const [name, setName] = useState("")
+  const [startDate, setStartDate] = useState<Date>()
+  const [dateOfBirth, setDateOfBirth] = useState<Date>()
+  const [cycleType, setCycleType] = useState<IVFCycle["cycleType"]>("standard")
+  const [isStartDateOpen, setIsStartDateOpen] = useState(false)
+  const [isBirthDateOpen, setIsBirthDateOpen] = useState(false)
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const newCycle = {
-      id: uuidv4(),
-      name: values.name,
-      startDate: values.startDate.toISOString(),
-      cycleType: values.cycleType,
+  const calculateAge = () => {
+    if (dateOfBirth && startDate) {
+      return differenceInYears(startDate, dateOfBirth)
+    }
+    return null
+  }
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (!name || !startDate || !dateOfBirth) {
+      return
+    }
+
+    const ageAtStart = calculateAge()
+
+    const newCycle: IVFCycle = {
+      id: crypto.randomUUID(),
+      name,
+      startDate: startDate.toISOString(),
+      dateOfBirth: dateOfBirth.toISOString(),
+      ageAtStart: ageAtStart || undefined,
+      cycleType,
       status: "active",
       days: [],
     }
@@ -52,94 +61,149 @@ export default function NewCyclePage() {
     router.push(`/cycles/${newCycle.id}`)
   }
 
+  const currentYear = new Date().getFullYear()
+  const years = Array.from({ length: currentYear - 1940 + 1 }, (_, i) => currentYear - i)
+
   return (
-    <div className="container max-w-lg py-10">
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
+      <div className="mb-6">
+        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
+          <ArrowLeft className="mr-2 h-4 w-4" />
+          Back to Dashboard
+        </Link>
+        <h1 className="text-3xl font-bold">Create New Cycle</h1>
+        <p className="text-muted-foreground mt-2">Start tracking a new IVF cycle</p>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle>Create New IVF Cycle</CardTitle>
-          <CardDescription>Start tracking a new IVF cycle with medications, appointments, and results</CardDescription>
+          <CardTitle>Cycle Information</CardTitle>
+          <CardDescription>
+            Enter the basic information for your new IVF cycle
+            {calculateAge() && (
+              <span className="block mt-2 text-sm font-medium text-foreground">
+                Age at cycle start: {calculateAge()} years
+              </span>
+            )}
+          </CardDescription>
         </CardHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)}>
-            <CardContent className="space-y-6">
-              <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cycle Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g., IVF Cycle #1" {...field} />
-                    </FormControl>
-                    <FormDescription>Give your cycle a name to easily identify it</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
+        <CardContent>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="name">Cycle Name</Label>
+              <Input
+                id="name"
+                placeholder="e.g., First IVF Cycle, Cycle #2"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
               />
+            </div>
 
-              <FormField
-                control={form.control}
-                name="startDate"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                    <FormLabel>Start Date</FormLabel>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <FormControl>
-                          <Button
-                            variant={"outline"}
-                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
-                          >
-                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                          </Button>
-                        </FormControl>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                      </PopoverContent>
-                    </Popover>
-                    <FormDescription>The first day of your IVF cycle</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="cycleType"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cycle Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select cycle type" />
-                        </SelectTrigger>
-                      </FormControl>
+            <div className="space-y-2">
+              <Label>Date of Birth</Label>
+              <Popover open={isBirthDateOpen} onOpenChange={setIsBirthDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn(
+                      "w-full justify-start text-left font-normal",
+                      !dateOfBirth && "text-muted-foreground",
+                    )}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {dateOfBirth ? format(dateOfBirth, "PPP") : "Select your date of birth"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <div className="p-3 border-b">
+                    <Select
+                      value={dateOfBirth?.getFullYear().toString()}
+                      onValueChange={(year) => {
+                        const newDate = new Date(dateOfBirth || new Date())
+                        newDate.setFullYear(Number.parseInt(year))
+                        setDateOfBirth(newDate)
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select year" />
+                      </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="mini">Mini</SelectItem>
-                        <SelectItem value="natural">Natural</SelectItem>
-                        <SelectItem value="antagonist">Antagonist</SelectItem>
-                        <SelectItem value="long">Long</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {years.map((year) => (
+                          <SelectItem key={year} value={year.toString()}>
+                            {year}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
-                    <FormDescription>The protocol type for this IVF cycle</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-            <CardFooter className="flex justify-between">
-              <Button variant="outline" type="button" onClick={() => router.push("/")}>
-                Cancel
+                  </div>
+                  <Calendar
+                    mode="single"
+                    selected={dateOfBirth}
+                    onSelect={(date) => {
+                      setDateOfBirth(date)
+                      setIsBirthDateOpen(false)
+                    }}
+                    disabled={(date) => date > new Date()}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Cycle Start Date</Label>
+              <Popover open={isStartDateOpen} onOpenChange={setIsStartDateOpen}>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !startDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {startDate ? format(startDate, "PPP") : "Select cycle start date"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    selected={startDate}
+                    onSelect={(date) => {
+                      setStartDate(date)
+                      setIsStartDateOpen(false)
+                    }}
+                    initialFocus
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="cycleType">Cycle Type</Label>
+              <Select value={cycleType} onValueChange={(value: IVFCycle["cycleType"]) => setCycleType(value)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="standard">Standard IVF</SelectItem>
+                  <SelectItem value="mini">Mini IVF</SelectItem>
+                  <SelectItem value="natural">Natural Cycle</SelectItem>
+                  <SelectItem value="antagonist">Antagonist Protocol</SelectItem>
+                  <SelectItem value="long">Long Protocol</SelectItem>
+                  <SelectItem value="other">Other</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex gap-4 pt-4">
+              <Button type="submit" className="flex-1" disabled={!name || !startDate || !dateOfBirth}>
+                Create Cycle
               </Button>
-              <Button type="submit">Create Cycle</Button>
-            </CardFooter>
+              <Button type="button" variant="outline" asChild>
+                <Link href="/">Cancel</Link>
+              </Button>
+            </div>
           </form>
-        </Form>
+        </CardContent>
       </Card>
     </div>
   )

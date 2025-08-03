@@ -5,7 +5,7 @@ import Link from "next/link"
 import { format } from "date-fns"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Calendar, Clock, ArrowRight, TestTube, CalendarCheck } from "lucide-react"
+import { Calendar, Clock, ArrowRight, TestTube, CalendarCheck, User } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useIVFStore } from "@/lib/store"
 
@@ -29,7 +29,7 @@ export function CycleList() {
     )
   }
 
-  if (cycles.length === 0) {
+  if (!cycles || cycles.length === 0) {
     return (
       <Card className="border-dashed">
         <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 text-center">
@@ -69,6 +69,12 @@ export function CycleList() {
                       )}
                     </span>
                   </div>
+                  {cycle.ageAtStart && (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+                      <User className="h-3.5 w-3.5" />
+                      <span>Age: {cycle.ageAtStart} years</span>
+                    </div>
+                  )}
                 </div>
                 <Badge
                   variant={
@@ -90,7 +96,7 @@ export function CycleList() {
                     {cycle.outcome.eggsRetrieved} eggs
                   </Badge>
                 )}
-                {cycle.days.length > 0 && (
+                {cycle.days && cycle.days.length > 0 && (
                   <Badge variant="outline" className="flex items-center gap-1">
                     <CalendarCheck className="h-3 w-3" />
                     {cycle.days.length} days
