@@ -6,7 +6,7 @@ import Link from "next/link"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, differenceInYears } from "date-fns"
 import { ArrowLeft, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,6 +24,15 @@ const formSchema = z.object({
     required_error: "Start date is required",
   }),
   endDate: z.date().optional(),
+  dateOfBirth: z
+    .date({
+      required_error: "Date of birth is required",
+    })
+    .refine((date) => {
+      const today = new Date()
+      const age = differenceInYears(today, date)
+      return age >= 18 && age <= 60
+    }, "Age must be between 18 and 60 years"),
   cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
     required_error: "Cycle type is required",
   }),
@@ -49,10 +58,21 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       name: cycle?.name || "",
       startDate: cycle ? parseISO(cycle.startDate) : new Date(),
       endDate: cycle?.endDate ? parseISO(cycle.endDate) : undefined,
+      dateOfBirth: cycle?.dateOfBirth ? parseISO(cycle.dateOfBirth) : undefined,
       cycleType: cycle?.cycleType || "standard",
       status: cycle?.status || "active",
     },
   })
+
+  const watchedStartDate = form.watch("startDate")
+  const watchedDateOfBirth = form.watch("dateOfBirth")
+
+  const calculateAge = () => {
+    if (watchedStartDate && watchedDateOfBirth) {
+      return differenceInYears(watchedStartDate, watchedDateOfBirth)
+    }
+    return null
+  }
 
   if (!mounted) return null
 
@@ -71,10 +91,14 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
   }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
+    const ageAtStart = differenceInYears(values.startDate, values.dateOfBirth)
+
     updateCycle(params.id, {
       name: values.name,
       startDate: values.startDate.toISOString(),
       endDate: values.endDate ? values.endDate.toISOString() : undefined,
+      dateOfBirth: values.dateOfBirth.toISOString(),
+      ageAtStart,
       cycleType: values.cycleType,
       status: values.status,
     })
@@ -116,6 +140,45 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
 
               <FormField
                 control={form.control}
+                name="dateOfBirth"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Date of Birth</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                          >
+                            {field.value ? format(field.value, "PPP") : <span>Pick your birth date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
+                          captionLayout="dropdown-buttons"
+                          fromYear={1940}
+                          toYear={new Date().getFullYear()}
+                          initialFocus
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>
+                      Your date of birth {calculateAge() && `(Age at cycle start: ${calculateAge()} years)`}
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="startDate"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
@@ -133,15 +196,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          fromYear={1980}
-                          toYear={new Date().getFullYear() + 2}
-                          captionLayout="dropdown"
-                        />
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                       </PopoverContent>
                     </Popover>
                     <FormDescription>The first day of your IVF cycle</FormDescription>
@@ -169,15 +224,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          fromYear={1980}
-                          toYear={new Date().getFullYear() + 2}
-                          captionLayout="dropdown"
-                        />
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                       </PopoverContent>
                     </Popover>
                     <FormDescription>The last day of your IVF cycle (optional)</FormDescription>

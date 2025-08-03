@@ -1,10 +1,12 @@
 "use client"
+
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { format, differenceInYears } from "date-fns"
-import { CalendarIcon } from 'lucide-react'
+import { ArrowLeft, CalendarIcon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -14,18 +16,27 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar"
 import { cn } from "@/lib/utils"
 import { useIVFStore } from "@/lib/store"
-import { v4 as uuidv4 } from "uuid"
 
 const formSchema = z.object({
   name: z.string().min(1, "Name is required"),
   startDate: z.date({
     required_error: "Start date is required",
   }),
-  dateOfBirth: z.date({
-    required_error: "Date of birth is required",
-  }),
+  endDate: z.date().optional(),
+  dateOfBirth: z
+    .date({
+      required_error: "Date of birth is required",
+    })
+    .refine((date) => {
+      const today = new Date()
+      const age = differenceInYears(today, date)
+      return age >= 18 && age <= 60
+    }, "Age must be between 18 and 60 years"),
   cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
     required_error: "Cycle type is required",
+  }),
+  status: z.enum(["active", "completed", "cancelled"], {
+    required_error: "Status is required",
   }),
 })
 
@@ -37,28 +48,34 @@ export default function NewCyclePage() {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
+      startDate: new Date(),
       cycleType: "standard",
+      status: "active",
     },
   })
 
   const watchedStartDate = form.watch("startDate")
   const watchedDateOfBirth = form.watch("dateOfBirth")
 
-  // Calculate age at cycle start
-  const ageAtCycleStart =
-    watchedStartDate && watchedDateOfBirth ? differenceInYears(watchedStartDate, watchedDateOfBirth) : null
+  const calculateAge = () => {
+    if (watchedStartDate && watchedDateOfBirth) {
+      return differenceInYears(watchedStartDate, watchedDateOfBirth)
+    }
+    return null
+  }
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const ageAtStart = differenceInYears(values.startDate, values.dateOfBirth)
 
     const newCycle = {
-      id: uuidv4(),
+      id: crypto.randomUUID(),
       name: values.name,
       startDate: values.startDate.toISOString(),
+      endDate: values.endDate ? values.endDate.toISOString() : undefined,
       dateOfBirth: values.dateOfBirth.toISOString(),
       ageAtStart,
       cycleType: values.cycleType,
-      status: "active" as const,
+      status: values.status,
       days: [],
     }
 
@@ -68,10 +85,17 @@ export default function NewCyclePage() {
 
   return (
     <div className="container max-w-lg py-10">
+      <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
+        <Link href="/" className="flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" />
+          Back to home
+        </Link>
+      </Button>
+
       <Card>
         <CardHeader>
           <CardTitle>Create New IVF Cycle</CardTitle>
-          <CardDescription>Start tracking a new IVF cycle with medications, appointments, and results</CardDescription>
+          <CardDescription>Start tracking a new IVF cycle</CardDescription>
         </CardHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
@@ -104,7 +128,7 @@ export default function NewCyclePage() {
                             variant={"outline"}
                             className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                           >
-                            {field.value ? format(field.value, "PPP") : <span>Pick your date of birth</span>}
+                            {field.value ? format(field.value, "PPP") : <span>Pick your birth date</span>}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                           </Button>
                         </FormControl>
@@ -115,14 +139,16 @@ export default function NewCyclePage() {
                           selected={field.value}
                           onSelect={field.onChange}
                           disabled={(date) => date > new Date() || date < new Date("1900-01-01")}
-                          initialFocus
+                          captionLayout="dropdown-buttons"
                           fromYear={1940}
                           toYear={new Date().getFullYear()}
-                          captionLayout="dropdown"
+                          initialFocus
                         />
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>Your date of birth to calculate age at cycle start</FormDescription>
+                    <FormDescription>
+                      Your date of birth {calculateAge() && `(Age at cycle start: ${calculateAge()} years)`}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -147,25 +173,38 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={field.value}
-                          onSelect={field.onChange}
-                          initialFocus
-                          fromYear={1980}
-                          toYear={new Date().getFullYear() + 2}
-                          captionLayout="dropdown"
-                        />
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>
-                      The first day of your IVF cycle
-                      {ageAtCycleStart !== null && (
-                        <span className="block mt-1 font-medium text-foreground">
-                          Age at cycle start: {ageAtCycleStart} years old
-                        </span>
-                      )}
-                    </FormDescription>
+                    <FormDescription>The first day of your IVF cycle</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="endDate"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>End Date</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant={"outline"}
+                            className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                          >
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date (optional)</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                      </PopoverContent>
+                    </Popover>
+                    <FormDescription>The last day of your IVF cycle (optional)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -193,6 +232,30 @@ export default function NewCyclePage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>The protocol type for this IVF cycle</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="status"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select status" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="active">Active</SelectItem>
+                        <SelectItem value="completed">Completed</SelectItem>
+                        <SelectItem value="cancelled">Cancelled</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The current status of this IVF cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
