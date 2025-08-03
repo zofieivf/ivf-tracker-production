@@ -18,7 +18,7 @@ import type { CycleDay, Medication, ClinicVisit, FollicleMeasurement, BloodworkR
 
 export default function EditDayPage({ params }: { params: { id: string; dayId: string } }) {
   const router = useRouter()
-  const { getCycleById, updateCycleDay } = useIVFStore()
+  const { getCycleById, updateDay } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === params.dayId))
   const [mounted, setMounted] = useState(false)
@@ -72,7 +72,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
       notes: notes || undefined,
     }
 
-    updateCycleDay(params.id, updatedDay)
+    updateDay(params.id, params.dayId, updatedDay)
     router.push(`/cycles/${params.id}/days/${params.dayId}`)
   }
 
