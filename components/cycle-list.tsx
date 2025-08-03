@@ -1,116 +1,75 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import Link from "next/link"
 import { format } from "date-fns"
-import { Badge } from "@/components/ui/badge"
-import { Card, CardContent, CardFooter } from "@/components/ui/card"
-import { Calendar, Clock, ArrowRight, TestTube, CalendarCheck, User } from "lucide-react"
+import { Calendar, User, Activity, FileText } from 'lucide-react'
+import Link from "next/link"
+
 import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { useIVFStore } from "@/lib/store"
 
 export function CycleList() {
   const { cycles } = useIVFStore()
-  const [mounted, setMounted] = useState(false)
-
-  useEffect(() => {
-    setMounted(true)
-  }, [])
-
-  if (!mounted) {
-    return (
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
-        {[1, 2].map((i) => (
-          <Card key={i} className="animate-pulse">
-            <CardContent className="p-6 h-40"></CardContent>
-          </Card>
-        ))}
-      </div>
-    )
-  }
 
   if (!cycles || cycles.length === 0) {
     return (
-      <Card className="border-dashed">
-        <CardContent className="p-6 flex flex-col items-center justify-center space-y-4 text-center">
-          <div className="rounded-full bg-primary/10 p-3">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <div>
-            <h3 className="text-lg font-medium">No cycles yet</h3>
-            <p className="text-sm text-muted-foreground mt-1">Create your first IVF cycle to start tracking</p>
-          </div>
-          <Link href="/cycles/new">
-            <Button>Create Cycle</Button>
-          </Link>
+      <Card>
+        <CardContent className="flex flex-col items-center justify-center py-12">
+          <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+          <h3 className="text-lg font-semibold mb-2">No cycles yet</h3>
+          <p className="text-muted-foreground text-center mb-4">
+            Create your first IVF cycle to start tracking medications, appointments, and results.
+          </p>
+          <Button asChild>
+            <Link href="/cycles/new">Create First Cycle</Link>
+          </Button>
         </CardContent>
       </Card>
     )
   }
 
   return (
-    <div className="grid gap-4 grid-cols-1 md:grid-cols-2">
+    <div className="grid gap-4">
       {cycles.map((cycle) => (
-        <Link key={cycle.id} href={`/cycles/${cycle.id}`}>
-          <Card className="hover:border-primary/50 transition-all">
-            <CardContent className="p-6">
-              <div className="flex justify-between items-start">
-                <div>
-                  <h3 className="font-semibold text-lg">{cycle.name}</h3>
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                    <Calendar className="h-3.5 w-3.5" />
-                    <span>
-                      {format(new Date(cycle.startDate), "MMM d, yyyy")}
-                      {cycle.endDate && (
-                        <>
-                          <ArrowRight className="h-3.5 w-3.5 mx-1 inline" />
-                          {format(new Date(cycle.endDate), "MMM d, yyyy")}
-                        </>
-                      )}
-                    </span>
+        <Card key={cycle.id} className="hover:shadow-md transition-shadow">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <div>
+                <CardTitle className="text-xl">{cycle.name}</CardTitle>
+                <CardDescription className="flex items-center gap-4 mt-2">
+                  <div className="flex items-center gap-1">
+                    <Calendar className="h-4 w-4" />
+                    <span>Started {format(new Date(cycle.startDate), "MMM d, yyyy")}</span>
                   </div>
                   {cycle.ageAtStart && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
-                      <User className="h-3.5 w-3.5" />
-                      <span>Age: {cycle.ageAtStart} years</span>
+                    <div className="flex items-center gap-1">
+                      <User className="h-4 w-4" />
+                      <span>{cycle.ageAtStart}y</span>
                     </div>
                   )}
+                </CardDescription>
+              </div>
+              <Badge variant={cycle.status === 'active' ? 'default' : 'secondary'}>
+                {cycle.status}
+              </Badge>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <div className="flex items-center gap-1">
+                  <Activity className="h-4 w-4" />
+                  <span>{cycle.days && cycle.days.length > 0 ? `${cycle.days.length} days tracked` : 'No days tracked'}</span>
                 </div>
-                <Badge
-                  variant={
-                    cycle.status === "active" ? "default" : cycle.status === "completed" ? "success" : "destructive"
-                  }
-                >
-                  {cycle.status}
-                </Badge>
+                <Badge variant="outline">{cycle.cycleType}</Badge>
               </div>
-
-              <div className="mt-4 flex flex-wrap gap-2">
-                <Badge variant="outline" className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {cycle.cycleType}
-                </Badge>
-                {cycle.outcome?.eggsRetrieved && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <TestTube className="h-3 w-3" />
-                    {cycle.outcome.eggsRetrieved} eggs
-                  </Badge>
-                )}
-                {cycle.days && cycle.days.length > 0 && (
-                  <Badge variant="outline" className="flex items-center gap-1">
-                    <CalendarCheck className="h-3 w-3" />
-                    {cycle.days.length} days
-                  </Badge>
-                )}
-              </div>
-            </CardContent>
-            <CardFooter className="border-t bg-muted/50 px-6 py-3">
-              <Button variant="ghost" className="w-full justify-start p-0 h-auto text-sm font-normal">
-                View details
+              <Button asChild>
+                <Link href={`/cycles/${cycle.id}`}>View Details</Link>
               </Button>
-            </CardFooter>
-          </Card>
-        </Link>
+            </div>
+          </CardContent>
+        </Card>
       ))}
     </div>
   )
