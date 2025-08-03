@@ -36,6 +36,9 @@ const formSchema = z.object({
   cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
     required_error: "Cycle type is required",
   }),
+  cycleGoal: z.enum(["retrieval", "transfer"], {
+    required_error: "Cycle goal is required",
+  }),
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
   }),
@@ -60,6 +63,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       endDate: cycle?.endDate ? parseISO(cycle.endDate) : undefined,
       dateOfBirth: cycle?.dateOfBirth ? parseISO(cycle.dateOfBirth) : undefined,
       cycleType: cycle?.cycleType || "standard",
+      cycleGoal: cycle?.cycleGoal || "retrieval",
       status: cycle?.status || "active",
     },
   })
@@ -100,6 +104,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       dateOfBirth: values.dateOfBirth.toISOString(),
       ageAtStart,
       cycleType: values.cycleType,
+      cycleGoal: values.cycleGoal,
       status: values.status,
     })
 
@@ -255,6 +260,29 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                       </SelectContent>
                     </Select>
                     <FormDescription>The protocol type for this IVF cycle</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cycleGoal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cycle Goal</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cycle goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
+                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

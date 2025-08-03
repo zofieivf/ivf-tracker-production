@@ -1,12 +1,12 @@
 "use client"
 
-import { useParams, useRouter } from "next/navigation"
-import { format } from "date-fns"
-import { ArrowLeft, Calendar, Edit, Plus, User, BarChart3 } from 'lucide-react'
+import { useEffect, useState } from "react"
+import { useRouter } from "next/navigation"
 import Link from "next/link"
-
+import { format, parseISO } from "date-fns"
+import { ArrowLeft, Calendar, Edit, Plus, User, Target } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useIVFStore } from "@/lib/store"
@@ -14,117 +14,204 @@ import { DayCard } from "@/components/day-card"
 import { CycleOutcomeCard } from "@/components/cycle-outcome-card"
 import { CycleChartsView } from "@/components/cycle-charts-view"
 
-export default function CyclePage() {
-  const params = useParams()
+export default function CyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { cycles } = useIVFStore()
-  
-  const cycle = cycles.find(c => c.id === params.id)
+  const { getCycleById } = useIVFStore()
+  const [cycle, setCycle] = useState(getCycleById(params.id))
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+    setCycle(getCycleById(params.id))
+  }, [params.id, getCycleById])
+
+  if (!mounted) return null
 
   if (!cycle) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4">Cycle not found</h1>
+      <div className="container max-w-4xl py-10">
+        <div className="flex flex-col items-center justify-center py-20">
+          <h2 className="text-2xl font-bold mb-2">Cycle not found</h2>
+          <p className="text-muted-foreground mb-6">The cycle you're looking for doesn't exist</p>
           <Button asChild>
-            <Link href="/">Back to Dashboard</Link>
+            <Link href="/">Go back home</Link>
           </Button>
         </div>
       </div>
     )
   }
 
-  const sortedDays = [...cycle.days].sort((a, b) => a.cycleDay - b.cycleDay)
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800"
+      case "completed":
+        return "bg-blue-100 text-blue-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getCycleGoalDisplay = (goal: string) => {
+    switch (goal) {
+      case "retrieval":
+        return "Egg Retrieval"
+      case "transfer":
+        return "Embryo Transfer"
+      default:
+        return goal
+    }
+  }
+
+  const getCycleTypeDisplay = (type: string) => {
+    switch (type) {
+      case "standard":
+        return "Standard IVF"
+      case "mini":
+        return "Mini IVF"
+      case "natural":
+        return "Natural Cycle"
+      case "antagonist":
+        return "Antagonist Protocol"
+      case "long":
+        return "Long Protocol"
+      case "other":
+        return "Other"
+      default:
+        return type
+    }
+  }
 
   return (
-    <div className="container mx-auto px-4 py-8">
-      <div className="mb-6">
-        <Link href="/" className="inline-flex items-center text-sm text-muted-foreground hover:text-foreground mb-4">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          Back to Dashboard
+    <div className="container max-w-6xl py-10">
+      <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
+        <Link href="/" className="flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" />
+          Back to dashboard
         </Link>
-        
-        <div className="flex items-center justify-between">
+      </Button>
+
+      <div className="flex flex-col gap-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">{cycle.name}</h1>
-            <div className="flex items-center gap-4 mt-2 text-muted-foreground">
+            <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Calendar className="h-4 w-4" />
-                <span>Started {format(new Date(cycle.startDate), "PPP")}</span>
+                {format(parseISO(cycle.startDate), "PPP")}
+                {cycle.endDate && ` - ${format(parseISO(cycle.endDate), "PPP")}`}
               </div>
               {cycle.ageAtStart && (
                 <div className="flex items-center gap-1">
                   <User className="h-4 w-4" />
-                  <span>Age: {cycle.ageAtStart} years</span>
+                  Age: {cycle.ageAtStart} years
                 </div>
               )}
-              <Badge variant={cycle.status === 'active' ? 'default' : 'secondary'}>
-                {cycle.status}
-              </Badge>
+              {cycle.cycleGoal && (
+                <div className="flex items-center gap-1">
+                  <Target className="h-4 w-4" />
+                  {getCycleGoalDisplay(cycle.cycleGoal)}
+                </div>
+              )}
             </div>
           </div>
-          
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/cycles/${cycle.id}/edit`}>
-                <Edit className="mr-2 h-4 w-4" />
-                Edit Cycle
-              </Link>
-            </Button>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
             <Button asChild>
-              <Link href={`/cycles/${cycle.id}/days/new`}>
-                <Plus className="mr-2 h-4 w-4" />
-                Add Day
+              <Link href={`/cycles/${cycle.id}/edit`}>
+                <Edit className="h-4 w-4 mr-2" />
+                Edit Cycle
               </Link>
             </Button>
           </div>
         </div>
-      </div>
 
-      <Tabs defaultValue="days" className="space-y-6">
-        <TabsList>
-          <TabsTrigger value="days">Daily Tracking</TabsTrigger>
-          <TabsTrigger value="charts">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            Charts & Analysis
-          </TabsTrigger>
-          <TabsTrigger value="outcome">Outcome</TabsTrigger>
-        </TabsList>
+        {/* Cycle Info Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Cycle Type</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{getCycleTypeDisplay(cycle.cycleType)}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Cycle Goal</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{getCycleGoalDisplay(cycle.cycleGoal || "retrieval")}</p>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm font-medium">Days Tracked</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-2xl font-bold">{cycle.days?.length || 0}</p>
+            </CardContent>
+          </Card>
+        </div>
 
-        <TabsContent value="days" className="space-y-6">
-          {sortedDays.length === 0 ? (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
-                <h3 className="text-lg font-semibold mb-2">No days tracked yet</h3>
-                <p className="text-muted-foreground text-center mb-4">
-                  Start tracking your IVF cycle by adding your first day of medications, appointments, and results.
-                </p>
-                <Button asChild>
-                  <Link href={`/cycles/${cycle.id}/days/new`}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add First Day
-                  </Link>
-                </Button>
-              </CardContent>
-            </Card>
-          ) : (
-            <div className="grid gap-4">
-              {sortedDays.map((day) => (
-                <DayCard key={day.id} day={day} cycleId={cycle.id} />
-              ))}
+        {/* Main Content */}
+        <Tabs defaultValue="days" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="days">Daily Tracking</TabsTrigger>
+            <TabsTrigger value="charts">Charts & Analysis</TabsTrigger>
+            <TabsTrigger value="outcome">Cycle Outcome</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="days" className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Daily Tracking</h2>
+              <Button asChild>
+                <Link href={`/cycles/${cycle.id}/days/new`}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Day
+                </Link>
+              </Button>
             </div>
-          )}
-        </TabsContent>
 
-        <TabsContent value="charts">
-          <CycleChartsView cycle={cycle} />
-        </TabsContent>
+            {cycle.days && cycle.days.length > 0 ? (
+              <div className="grid gap-4">
+                {cycle.days
+                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+                  .map((day) => (
+                    <DayCard key={day.id} day={day} cycleId={cycle.id} />
+                  ))}
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="flex flex-col items-center justify-center py-10">
+                  <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No days tracked yet</h3>
+                  <p className="text-muted-foreground text-center mb-4">
+                    Start tracking your daily medications, appointments, and measurements
+                  </p>
+                  <Button asChild>
+                    <Link href={`/cycles/${cycle.id}/days/new`}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add First Day
+                    </Link>
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
 
-        <TabsContent value="outcome">
-          <CycleOutcomeCard cycle={cycle} />
-        </TabsContent>
-      </Tabs>
+          <TabsContent value="charts">
+            <CycleChartsView cycle={cycle} />
+          </TabsContent>
+
+          <TabsContent value="outcome">
+            <CycleOutcomeCard cycle={cycle} />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   )
 }

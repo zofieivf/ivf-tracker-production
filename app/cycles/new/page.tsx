@@ -35,6 +35,9 @@ const formSchema = z.object({
   cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
     required_error: "Cycle type is required",
   }),
+  cycleGoal: z.enum(["retrieval", "transfer"], {
+    required_error: "Cycle goal is required",
+  }),
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
   }),
@@ -50,6 +53,7 @@ export default function NewCyclePage() {
       name: "",
       startDate: new Date(),
       cycleType: "standard",
+      cycleGoal: "retrieval",
       status: "active",
     },
   })
@@ -75,6 +79,7 @@ export default function NewCyclePage() {
       dateOfBirth: values.dateOfBirth.toISOString(),
       ageAtStart,
       cycleType: values.cycleType,
+      cycleGoal: values.cycleGoal,
       status: values.status,
       days: [],
     }
@@ -232,6 +237,29 @@ export default function NewCyclePage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>The protocol type for this IVF cycle</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cycleGoal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cycle Goal</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cycle goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
+                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
