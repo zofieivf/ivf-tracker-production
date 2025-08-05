@@ -85,7 +85,15 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
                     <div className="flex justify-between">
                       <div>
                         <p className="font-medium">{med.name}</p>
-                        {med.dosage && <p className="text-sm text-muted-foreground">{med.dosage}</p>}
+                        <div className="flex gap-2 text-sm text-muted-foreground">
+                          {med.dosage && <span>{med.dosage}</span>}
+                          {(med.hour && med.minute && med.ampm) && (
+                            <>
+                              {med.dosage && <span>•</span>}
+                              <span>{med.hour}:{med.minute} {med.ampm}</span>
+                            </>
+                          )}
+                        </div>
                       </div>
                       <div className="flex items-center gap-2">
                         {med.taken && (

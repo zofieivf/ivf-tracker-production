@@ -22,6 +22,9 @@ import { v4 as uuidv4 } from "uuid"
 const medicationSchema = z.object({
   name: z.string().min(1, "Medication name is required"),
   dosage: z.string().optional(),
+  hour: z.string().optional(),
+  minute: z.string().optional(),
+  ampm: z.string().optional(),
   taken: z.boolean().default(false),
   refrigerated: z.boolean().default(false),
 })
@@ -67,7 +70,7 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
   const cycle = getCycleById(params.id)
 
   const [medications, setMedications] = useState<
-    { id: string; name: string; dosage?: string; taken: boolean; refrigerated?: boolean }[]
+    { id: string; name: string; dosage?: string; hour?: string; minute?: string; ampm?: string; taken: boolean; refrigerated?: boolean }[]
   >([])
   const [bloodworkResults, setBloodworkResults] = useState<
     { id: string; test: string; value: string; unit?: string; reference?: string }[]
@@ -101,7 +104,7 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
   }
 
   function addMedication() {
-    const newMed = { id: uuidv4(), name: "", dosage: "", taken: false, refrigerated: false }
+    const newMed = { id: uuidv4(), name: "", dosage: "", hour: "", minute: "", ampm: "", taken: false, refrigerated: false }
     setMedications([...medications, newMed])
   }
 
@@ -248,6 +251,60 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
                                   onChange={(e) => updateMedication(med.id, "dosage", e.target.value)}
                                   placeholder="e.g., 225 IU"
                                 />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Time to Take</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                <Select
+                                  value={med.hour}
+                                  onValueChange={(value) => updateMedication(med.id, "hour", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Hour" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">1</SelectItem>
+                                    <SelectItem value="2">2</SelectItem>
+                                    <SelectItem value="3">3</SelectItem>
+                                    <SelectItem value="4">4</SelectItem>
+                                    <SelectItem value="5">5</SelectItem>
+                                    <SelectItem value="6">6</SelectItem>
+                                    <SelectItem value="7">7</SelectItem>
+                                    <SelectItem value="8">8</SelectItem>
+                                    <SelectItem value="9">9</SelectItem>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="11">11</SelectItem>
+                                    <SelectItem value="12">12</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={med.minute}
+                                  onValueChange={(value) => updateMedication(med.id, "minute", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Min" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="00">00</SelectItem>
+                                    <SelectItem value="15">15</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="45">45</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={med.ampm}
+                                  onValueChange={(value) => updateMedication(med.id, "ampm", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="AM/PM" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AM">AM</SelectItem>
+                                    <SelectItem value="PM">PM</SelectItem>
+                                  </SelectContent>
+                                </Select>
                               </div>
                             </div>
 

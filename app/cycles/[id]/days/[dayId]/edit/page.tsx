@@ -77,7 +77,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
   }
 
   const addMedication = () => {
-    setMedications([...medications, { name: "", taken: false }])
+    setMedications([...medications, { name: "", taken: false, hour: "", minute: "", ampm: "", dosage: "", refrigerated: false }])
   }
 
   const updateMedication = (index: number, field: keyof Medication, value: any) => {
@@ -185,6 +185,59 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                         onChange={(e) => updateMedication(index, "dosage", e.target.value)}
                         placeholder="e.g., 225 IU"
                       />
+                    </div>
+                    <div>
+                      <Label htmlFor={`med-time-${index}`}>Time to Take</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        <Select
+                          value={med.hour || ""}
+                          onValueChange={(value) => updateMedication(index, "hour", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Hour" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="1">1</SelectItem>
+                            <SelectItem value="2">2</SelectItem>
+                            <SelectItem value="3">3</SelectItem>
+                            <SelectItem value="4">4</SelectItem>
+                            <SelectItem value="5">5</SelectItem>
+                            <SelectItem value="6">6</SelectItem>
+                            <SelectItem value="7">7</SelectItem>
+                            <SelectItem value="8">8</SelectItem>
+                            <SelectItem value="9">9</SelectItem>
+                            <SelectItem value="10">10</SelectItem>
+                            <SelectItem value="11">11</SelectItem>
+                            <SelectItem value="12">12</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={med.minute || ""}
+                          onValueChange={(value) => updateMedication(index, "minute", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Min" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="00">00</SelectItem>
+                            <SelectItem value="15">15</SelectItem>
+                            <SelectItem value="30">30</SelectItem>
+                            <SelectItem value="45">45</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <Select
+                          value={med.ampm || ""}
+                          onValueChange={(value) => updateMedication(index, "ampm", value)}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="AM/PM" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="AM">AM</SelectItem>
+                            <SelectItem value="PM">PM</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
                     </div>
                     <div className="flex items-center space-x-4">
                       <div className="flex items-center space-x-2">

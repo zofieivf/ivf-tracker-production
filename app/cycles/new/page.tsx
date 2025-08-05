@@ -45,13 +45,19 @@ const formSchema = z.object({
 
 export default function NewCyclePage() {
   const router = useRouter()
-  const { addCycle } = useIVFStore()
+  const { addCycle, cycles } = useIVFStore()
+
+  // Get date of birth from the most recent cycle if it exists
+  const previousDateOfBirth = cycles.length > 0 
+    ? cycles.sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]?.dateOfBirth
+    : undefined
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: "",
       startDate: new Date(),
+      dateOfBirth: previousDateOfBirth ? new Date(previousDateOfBirth) : undefined,
       cycleType: "standard",
       cycleGoal: "retrieval",
       status: "active",
@@ -107,6 +113,29 @@ export default function NewCyclePage() {
             <CardContent className="space-y-6">
               <FormField
                 control={form.control}
+                name="cycleGoal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cycle Goal</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cycle goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
+                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="name"
                 render={({ field }) => (
                   <FormItem>
@@ -152,7 +181,10 @@ export default function NewCyclePage() {
                       </PopoverContent>
                     </Popover>
                     <FormDescription>
-                      Your date of birth {calculateAge() && `(Age at cycle start: ${calculateAge()} years)`}
+                      {previousDateOfBirth ? 
+                        `Pre-filled from previous cycle ${calculateAge() && `(Age at cycle start: ${calculateAge()} years)`}` :
+                        `Your date of birth ${calculateAge() && `(Age at cycle start: ${calculateAge()} years)`}`
+                      }
                     </FormDescription>
                     <FormMessage />
                   </FormItem>
@@ -237,29 +269,6 @@ export default function NewCyclePage() {
                       </SelectContent>
                     </Select>
                     <FormDescription>The protocol type for this IVF cycle</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="cycleGoal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cycle Goal</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select cycle goal" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
-                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
