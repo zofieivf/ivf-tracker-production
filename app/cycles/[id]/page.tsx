@@ -185,11 +185,43 @@ export default function CyclePage({ params }: { params: { id: string } }) {
 
             {cycle.days && cycle.days.length > 0 ? (
               <div className="grid gap-4">
-                {cycle.days
-                  .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-                  .map((day) => (
-                    <DayCard key={day.id} day={day} cycleId={cycle.id} />
-                  ))}
+                {(() => {
+                  // Get existing days sorted by cycle day number
+                  const existingDays = cycle.days.sort((a, b) => a.cycleDay - b.cycleDay)
+                  const maxDay = existingDays.length > 0 ? Math.max(...existingDays.map(d => d.cycleDay)) : 0
+                  const allDays = []
+
+                  // Create array of all days from 1 to maxDay
+                  for (let dayNum = 1; dayNum <= maxDay; dayNum++) {
+                    const existingDay = existingDays.find(d => d.cycleDay === dayNum)
+                    if (existingDay) {
+                      allDays.push({ type: 'existing', day: existingDay })
+                    } else {
+                      // Create placeholder day
+                      const startDate = new Date(cycle.startDate)
+                      const dayDate = new Date(startDate)
+                      dayDate.setDate(startDate.getDate() + (dayNum - 1))
+                      
+                      const placeholderDay = {
+                        id: `placeholder-${dayNum}`,
+                        date: dayDate.toISOString(),
+                        cycleDay: dayNum,
+                        medications: [],
+                        notes: ''
+                      }
+                      allDays.push({ type: 'placeholder', day: placeholderDay })
+                    }
+                  }
+
+                  return allDays.map(({ type, day }) => (
+                    <DayCard 
+                      key={day.id} 
+                      day={day} 
+                      cycleId={cycle.id} 
+                      isPlaceholder={type === 'placeholder'} 
+                    />
+                  ))
+                })()}
               </div>
             ) : (
               <Card>
