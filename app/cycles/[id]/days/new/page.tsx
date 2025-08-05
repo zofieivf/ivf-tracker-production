@@ -146,11 +146,23 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
       }
     }
 
+    // Calculate the correct date based on cycle start date and day number
+    const cycleDay = Number.parseInt(dayNumber || "1")
+    let calculatedDate = dateString
+    
+    if (!calculatedDate && cycle) {
+      // Calculate date as cycle start date + (cycleDay - 1) days
+      const startDate = new Date(cycle.startDate)
+      const dayDate = new Date(startDate)
+      dayDate.setDate(startDate.getDate() + (cycleDay - 1))
+      calculatedDate = dayDate.toISOString()
+    }
+
     // Create new day
     const newDay = {
       id: uuidv4(),
-      date: dateString || new Date().toISOString(),
-      cycleDay: Number.parseInt(dayNumber || "1"),
+      date: calculatedDate || new Date().toISOString(),
+      cycleDay,
       medications: medications.filter((med) => med.name.trim() !== ""),
       clinicVisit: values.hasClinicVisit ? values.clinicVisit : undefined,
       follicleSizes: values.hasFollicleSizes ? follicleData : undefined,

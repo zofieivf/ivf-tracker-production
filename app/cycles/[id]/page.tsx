@@ -84,6 +84,7 @@ export default function CyclePage({ params }: { params: { id: string } }) {
     }
   }
 
+
   return (
     <div className="container max-w-6xl py-10">
       <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
@@ -169,7 +170,13 @@ export default function CyclePage({ params }: { params: { id: string } }) {
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Daily Tracking</h2>
               <Button asChild>
-                <Link href={`/cycles/${cycle.id}/days/new`}>
+                <Link href={`/cycles/${cycle.id}/days/new?day=${cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1}&date=${(() => {
+                  const nextDay = cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1;
+                  const startDate = new Date(cycle.startDate);
+                  const dayDate = new Date(startDate);
+                  dayDate.setDate(startDate.getDate() + (nextDay - 1));
+                  return dayDate.toISOString();
+                })()}`}>
                   <Plus className="h-4 w-4 mr-2" />
                   Add Day
                 </Link>
@@ -193,7 +200,7 @@ export default function CyclePage({ params }: { params: { id: string } }) {
                     Start tracking your daily medications, appointments, and measurements
                   </p>
                   <Button asChild>
-                    <Link href={`/cycles/${cycle.id}/days/new`}>
+                    <Link href={`/cycles/${cycle.id}/days/new?day=1&date=${cycle.startDate}`}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add First Day
                     </Link>

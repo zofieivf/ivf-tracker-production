@@ -1,9 +1,14 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { PlusCircle } from "lucide-react"
 import { CycleList } from "@/components/cycle-list"
+import { useIVFStore } from "@/lib/store"
 
 export default function Home() {
+  const { cycles } = useIVFStore()
+
   return (
     <div className="container max-w-4xl py-10">
       <div className="flex items-center justify-between mb-8">
@@ -19,7 +24,7 @@ export default function Home() {
         </Link>
       </div>
 
-      <CycleList />
+      <CycleList cycles={cycles} />
     </div>
   )
 }
