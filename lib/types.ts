@@ -20,7 +20,7 @@ export interface Medication {
 }
 
 export interface ClinicVisit {
-  type: "baseline" | "monitoring" | "consult" | "retrieval" | "transfer" | "other"
+  type: "baseline" | "monitoring" | "retrieval" | "transfer" | "other"
   notes?: string
 }
 

@@ -49,7 +49,7 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
             {hasClinicVisit && (
               <div className="flex items-center gap-2">
                 <Stethoscope className="h-4 w-4 text-primary" />
-                <span className="text-sm">{day.clinicVisit.type} visit</span>
+                <span className="text-sm">{day.clinicVisit?.type} visit</span>
               </div>
             )}
 
@@ -57,7 +57,7 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
               <div className="flex items-center gap-2">
                 <Droplet className="h-4 w-4 text-primary" />
                 <span className="text-sm">
-                  {day.follicleSizes.left.length + day.follicleSizes.right.length} follicles
+                  {(day.follicleSizes?.left.length || 0) + (day.follicleSizes?.right.length || 0)} follicles
                 </span>
               </div>
             )}
@@ -66,7 +66,7 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
               <div className="flex items-center gap-2">
                 <Droplet className="h-4 w-4 text-primary" />
                 <span className="text-sm">
-                  {day.bloodwork.length} bloodwork result{day.bloodwork.length !== 1 ? "s" : ""}
+                  {day.bloodwork?.length || 0} bloodwork result{(day.bloodwork?.length || 0) !== 1 ? "s" : ""}
                 </span>
               </div>
             )}
