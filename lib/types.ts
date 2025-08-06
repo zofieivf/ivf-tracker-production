@@ -12,6 +12,9 @@ export interface CycleDay {
 export interface Medication {
   name: string
   dosage?: string
+  hour?: string
+  minute?: string
+  ampm?: string
   taken: boolean
   refrigerated?: boolean
 }
@@ -48,15 +51,25 @@ export interface IVFCycle {
   outcome?: CycleOutcome
 }
 
+export interface EmbryoGrade {
+  id: string
+  day3Grade?: string
+  day5Grade?: string
+  day6Grade?: string
+  day7Grade?: string
+  pgtA?: "Euploid" | "Mosaic" | "Aneuploid"
+  sex?: string
+  pgtM?: string
+  pgtSR?: string
+}
+
 export interface CycleOutcome {
   eggsRetrieved?: number
   matureEggs?: number
+  fertilizationMethod?: "IVF" | "ICSI"
   fertilized?: number
   day3Embryos?: number
-  day5Blasts?: number
-  pgtTested?: number
-  pgtNormal?: number
-  transferred?: number
+  day3EmbryoGrades?: EmbryoGrade[]
   frozen?: number
-  outcome?: "positive" | "negative" | "chemical" | "miscarriage" | "ongoing"
+  embryosAvailableForTransfer?: number
 }

@@ -129,7 +129,6 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
       { name: "Mature Eggs", value: cycle.outcome.matureEggs || 0, fill: "#10b981" },
       { name: "Fertilized", value: cycle.outcome.fertilized || 0, fill: "#f59e0b" },
       { name: "Day 3 Embryos", value: cycle.outcome.day3Embryos || 0, fill: "#ef4444" },
-      { name: "Day 5 Blastocysts", value: cycle.outcome.day5Blasts || 0, fill: "#8b5cf6" },
     ]
 
     // Only include stages with values > 0
@@ -174,23 +173,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
       })
     }
 
-    if (outcome.day5Blasts !== undefined) {
-      data.push({
-        stage: "Day 5 Blasts",
-        count: outcome.day5Blasts,
-        percentage: Math.round((outcome.day5Blasts / eggsRetrieved) * 100),
-        fill: "#8b5cf6",
-      })
-    }
 
-    if (outcome.pgtNormal !== undefined && outcome.pgtTested !== undefined && outcome.pgtTested > 0) {
-      data.push({
-        stage: "PGT Normal",
-        count: outcome.pgtNormal,
-        percentage: Math.round((outcome.pgtNormal / outcome.pgtTested) * 100),
-        fill: "#06b6d4",
-      })
-    }
 
     return data
   }, [cycle.outcome])
@@ -205,7 +188,6 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
       { name: "Mature Eggs", value: outcome.matureEggs || 0 },
       { name: "Fertilized", value: outcome.fertilized || 0 },
       { name: "Day 3 Embryos", value: outcome.day3Embryos || 0 },
-      { name: "Day 5 Blasts", value: outcome.day5Blasts || 0 },
     ]
 
     const validStages = stages.filter((stage) => stage.value > 0)
@@ -439,98 +421,24 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
             </Card>
           )}
 
-          {/* PGT Testing Results */}
-          {cycle.outcome?.pgtTested && cycle.outcome.pgtTested > 0 && (
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <TestTube className="h-5 w-5 text-primary" />
-                  <div>
-                    <CardTitle>PGT Testing Results</CardTitle>
-                    <CardDescription>Genetic testing outcomes</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-blue-600">{cycle.outcome.pgtTested}</div>
-                    <p className="text-sm text-muted-foreground">Embryos Tested</p>
-                  </div>
 
-                  {cycle.outcome.pgtNormal !== undefined && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-green-600">{cycle.outcome.pgtNormal}</div>
-                      <p className="text-sm text-muted-foreground">
-                        Normal Results ({Math.round((cycle.outcome.pgtNormal / cycle.outcome.pgtTested) * 100)}%)
-                      </p>
-                    </div>
-                  )}
-
-                  {cycle.outcome.pgtNormal !== undefined && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-red-600">
-                        {cycle.outcome.pgtTested - cycle.outcome.pgtNormal}
-                      </div>
-                      <p className="text-sm text-muted-foreground">
-                        Abnormal Results (
-                        {Math.round(
-                          ((cycle.outcome.pgtTested - cycle.outcome.pgtNormal) / cycle.outcome.pgtTested) * 100,
-                        )}
-                        %)
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Transfer and Storage Summary */}
-          {(cycle.outcome?.transferred || cycle.outcome?.frozen) && (
+          {/* Frozen Embryos Summary */}
+          {cycle.outcome?.frozen && cycle.outcome.frozen > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <Target className="h-5 w-5 text-primary" />
                   <div>
-                    <CardTitle>Embryo Disposition</CardTitle>
-                    <CardDescription>How embryos were used or stored</CardDescription>
+                    <CardTitle>Frozen Embryos</CardTitle>
+                    <CardDescription>Embryos stored for future use</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {cycle.outcome.transferred && cycle.outcome.transferred > 0 && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-purple-600">{cycle.outcome.transferred}</div>
-                      <p className="text-sm text-muted-foreground">Embryos Transferred</p>
-                    </div>
-                  )}
-
-                  {cycle.outcome.frozen && cycle.outcome.frozen > 0 && (
-                    <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
-                      <p className="text-sm text-muted-foreground">Embryos Frozen</p>
-                    </div>
-                  )}
+                <div className="text-center p-4 border rounded-lg">
+                  <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
+                  <p className="text-sm text-muted-foreground">Embryos Frozen</p>
                 </div>
-
-                {cycle.outcome.outcome && (
-                  <div className="mt-4 text-center p-4 border rounded-lg">
-                    <div
-                      className={`text-2xl font-bold capitalize ${
-                        cycle.outcome.outcome === "positive" || cycle.outcome.outcome === "ongoing"
-                          ? "text-green-600"
-                          : cycle.outcome.outcome === "negative"
-                            ? "text-red-600"
-                            : "text-yellow-600"
-                      }`}
-                    >
-                      {cycle.outcome.outcome}
-                    </div>
-                    <p className="text-sm text-muted-foreground">Pregnancy Outcome</p>
-                  </div>
-                )}
               </CardContent>
             </Card>
           )}
