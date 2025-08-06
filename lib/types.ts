@@ -73,3 +73,37 @@ export interface CycleOutcome {
   frozen?: number
   embryosAvailableForTransfer?: number
 }
+
+export type FertilityProcedure = 
+  | "Hysterosalpingogram (HSG)"
+  | "Hysteroscopy (HSC)"
+  | "Endometrial Biopsy/ CD138 Stain"
+  | "RPL Bloodwork"
+  | "ReceptivaDX"
+  | "ERA"
+  | "ALICE"
+  | "Laparoscopic excision"
+  | "Karotyping"
+  | "Blood clotting (Leiden V Factor, MTHFR, PAI-1)"
+  | "Thyroid panel"
+  | "Uterine Biopsy"
+  | "Immune panel"
+  | "Prolactin (PRL)"
+  | "Sonohysterogram"
+  | "Polyp removal"
+  | "Lymphocyte immunotherapy"
+  | "Cytokine panel"
+  | "Intralipids"
+  | "Semen Analysis"
+  | "Sperm DNA Fragmentation"
+  | "Other"
+
+export interface ProcedureRecord {
+  id: string
+  procedureType: FertilityProcedure
+  customProcedureName?: string
+  procedureDate: string
+  clinicName?: string
+  notes?: string
+  results?: string
+}

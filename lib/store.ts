@@ -2,10 +2,11 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { IVFCycle, CycleOutcome, CycleDay } from "./types"
+import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord } from "./types"
 
 interface IVFStore {
   cycles: IVFCycle[]
+  procedures: ProcedureRecord[]
   addCycle: (cycle: IVFCycle) => void
   updateCycle: (id: string, cycle: Partial<IVFCycle>) => void
   deleteCycle: (id: string) => void
@@ -14,12 +15,17 @@ interface IVFStore {
   addDay: (cycleId: string, day: CycleDay) => void
   updateDay: (cycleId: string, dayId: string, day: Partial<CycleDay>) => void
   deleteDay: (cycleId: string, dayId: string) => void
+  addProcedure: (procedure: ProcedureRecord) => void
+  updateProcedure: (id: string, procedure: Partial<ProcedureRecord>) => void
+  deleteProcedure: (id: string) => void
+  getProcedureById: (id: string) => ProcedureRecord | undefined
 }
 
 export const useIVFStore = create<IVFStore>()(
   persist(
     (set, get) => ({
       cycles: [],
+      procedures: [],
 
       addCycle: (cycle) => {
         set((state) => ({
@@ -100,6 +106,30 @@ export const useIVFStore = create<IVFStore>()(
             return cycle
           }),
         }))
+      },
+
+      addProcedure: (procedure) => {
+        set((state) => ({
+          procedures: [...state.procedures, procedure],
+        }))
+      },
+
+      updateProcedure: (id, updatedProcedure) => {
+        set((state) => ({
+          procedures: state.procedures.map((procedure) => 
+            procedure.id === id ? { ...procedure, ...updatedProcedure } : procedure
+          ),
+        }))
+      },
+
+      deleteProcedure: (id) => {
+        set((state) => ({
+          procedures: state.procedures.filter((procedure) => procedure.id !== id),
+        }))
+      },
+
+      getProcedureById: (id) => {
+        return get().procedures.find((procedure) => procedure.id === id)
       },
     }),
     {

@@ -1,0 +1,98 @@
+import Link from "next/link"
+import { format, parseISO } from "date-fns"
+import { Calendar, User, Target } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import type { IVFCycle } from "@/lib/types"
+
+interface CycleCardProps {
+  cycle: IVFCycle
+}
+
+export function CycleCard({ cycle }: CycleCardProps) {
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "active":
+        return "bg-green-100 text-green-800"
+      case "completed":
+        return "bg-blue-100 text-blue-800"
+      case "cancelled":
+        return "bg-red-100 text-red-800"
+      default:
+        return "bg-gray-100 text-gray-800"
+    }
+  }
+
+  const getCycleGoalDisplay = (goal?: string) => {
+    switch (goal) {
+      case "retrieval":
+        return "Egg Retrieval"
+      case "transfer":
+        return "Embryo Transfer"
+      default:
+        return "Egg Retrieval" // Default fallback
+    }
+  }
+
+  const getCycleTypeDisplay = (type: string) => {
+    switch (type) {
+      case "standard":
+        return "Standard"
+      case "mini":
+        return "Mini"
+      case "natural":
+        return "Natural"
+      case "antagonist":
+        return "Antagonist"
+      case "long":
+        return "Long"
+      case "other":
+        return "Other"
+      default:
+        return type
+    }
+  }
+
+  return (
+    <Card className="hover:shadow-md transition-shadow w-full">
+      <CardHeader>
+        <div className="flex items-start justify-between">
+          <div>
+            <CardTitle className="text-xl">{cycle.name}</CardTitle>
+            <CardDescription className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                {format(parseISO(cycle.startDate), "MMM d, yyyy")}
+              </div>
+              {cycle.ageAtStart && (
+                <div className="flex items-center gap-1">
+                  <User className="h-4 w-4" />
+                  {cycle.ageAtStart}y
+                </div>
+              )}
+              <div className="flex items-center gap-1">
+                <Target className="h-4 w-4" />
+                {getCycleGoalDisplay(cycle.cycleGoal)}
+              </div>
+            </CardDescription>
+          </div>
+          <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+            <span>{getCycleTypeDisplay(cycle.cycleType)} Protocol</span>
+            <span>
+              {cycle.days && cycle.days.length > 0 ? `${cycle.days.length} days tracked` : "No days tracked"}
+            </span>
+          </div>
+          <Button asChild>
+            <Link href={`/cycles/${cycle.id}`}>View Details</Link>
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
