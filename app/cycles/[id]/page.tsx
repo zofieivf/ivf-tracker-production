@@ -110,18 +110,24 @@ export default function CyclePage({ params }: { params: { id: string } }) {
 
   const getCycleTypeDisplay = (type: string) => {
     switch (type) {
-      case "standard":
-        return "Standard IVF"
-      case "mini":
-        return "Mini IVF"
-      case "natural":
-        return "Natural Cycle"
       case "antagonist":
         return "Antagonist Protocol"
-      case "long":
-        return "Long Protocol"
+      case "long-lupron":
+        return "Long Lupron Protocol"
+      case "microdose-flare":
+        return "Microdose Flare Protocol"
+      case "mini-ivf":
+        return "Mini-IVF Protocol"
+      case "fresh":
+        return "Fresh Transfer"
+      case "frozen-medicated":
+        return "Frozen Transfer (Medicated)"
+      case "frozen-modified-natural":
+        return "Frozen Transfer (Modified Natural)"
+      case "frozen-natural":
+        return "Frozen Transfer (Natural)"
       case "other":
-        return "Other"
+        return "Other Protocol"
       default:
         return type
     }

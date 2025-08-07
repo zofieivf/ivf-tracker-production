@@ -44,7 +44,7 @@ const formSchema = z.object({
       const age = differenceInYears(today, date)
       return age >= 18 && age <= 60
     }, "Age must be between 18 and 60 years"),
-  cycleType: z.enum(["standard", "mini", "natural", "antagonist", "long", "other"], {
+  cycleType: z.enum(["antagonist", "long-lupron", "microdose-flare", "mini-ivf", "other", "fresh", "frozen-medicated", "frozen-modified-natural", "frozen-natural"], {
     required_error: "Cycle type is required",
   }),
   cycleGoal: z.enum(["retrieval", "transfer"], {
@@ -81,6 +81,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
 
   const watchedStartDate = form.watch("startDate")
   const watchedDateOfBirth = form.watch("dateOfBirth")
+  const watchedCycleGoal = form.watch("cycleGoal")
 
   const calculateAge = () => {
     if (watchedStartDate && watchedDateOfBirth) {
@@ -88,6 +89,22 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
     }
     return null
   }
+
+  // Reset cycle type when cycle goal changes to avoid incompatible values
+  useEffect(() => {
+    const currentCycleType = form.getValues("cycleType")
+    const currentGoal = form.getValues("cycleGoal")
+    
+    // Check if current cycle type is incompatible with current goal
+    const retrievalTypes = ["antagonist", "long-lupron", "microdose-flare", "mini-ivf", "other"]
+    const transferTypes = ["fresh", "frozen-medicated", "frozen-modified-natural", "frozen-natural"]
+    
+    if (currentGoal === "transfer" && retrievalTypes.includes(currentCycleType)) {
+      form.setValue("cycleType", "")
+    } else if (currentGoal === "retrieval" && transferTypes.includes(currentCycleType)) {
+      form.setValue("cycleType", "")
+    }
+  }, [watchedCycleGoal, form])
 
   const handleDeleteCycle = () => {
     deleteCycle(params.id)
@@ -310,23 +327,44 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                 name="cycleType"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Cycle Type</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>
+                      {watchedCycleGoal === "transfer" ? "Transfer Type" : "Cycle Type"}
+                    </FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select cycle type" />
+                          <SelectValue placeholder={
+                            watchedCycleGoal === "transfer" 
+                              ? "Select transfer type" 
+                              : "Select cycle type"
+                          } />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        <SelectItem value="standard">Standard</SelectItem>
-                        <SelectItem value="mini">Mini</SelectItem>
-                        <SelectItem value="natural">Natural</SelectItem>
-                        <SelectItem value="antagonist">Antagonist</SelectItem>
-                        <SelectItem value="long">Long</SelectItem>
-                        <SelectItem value="other">Other</SelectItem>
+                        {watchedCycleGoal === "transfer" ? (
+                          <>
+                            <SelectItem value="fresh">Fresh</SelectItem>
+                            <SelectItem value="frozen-medicated">Frozen (Medicated)</SelectItem>
+                            <SelectItem value="frozen-modified-natural">Frozen (Modified Natural)</SelectItem>
+                            <SelectItem value="frozen-natural">Frozen (Natural)</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <SelectItem value="antagonist">Antagonist</SelectItem>
+                            <SelectItem value="long-lupron">Long Lupron</SelectItem>
+                            <SelectItem value="microdose-flare">Microdose Flare</SelectItem>
+                            <SelectItem value="mini-ivf">Mini-IVF</SelectItem>
+                            <SelectItem value="other">Other</SelectItem>
+                          </>
+                        )}
                       </SelectContent>
                     </Select>
-                    <FormDescription>The protocol type for this IVF cycle</FormDescription>
+                    <FormDescription>
+                      {watchedCycleGoal === "transfer" 
+                        ? "The type of embryo transfer procedure"
+                        : "The protocol type for this IVF cycle"
+                      }
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

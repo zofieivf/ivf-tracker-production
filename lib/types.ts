@@ -44,7 +44,7 @@ export interface IVFCycle {
   endDate?: string
   dateOfBirth?: string
   ageAtStart?: number
-  cycleType: "standard" | "mini" | "natural" | "antagonist" | "long" | "other"
+  cycleType: "antagonist" | "long-lupron" | "microdose-flare" | "mini-ivf" | "other" | "fresh" | "frozen-medicated" | "frozen-modified-natural" | "frozen-natural"
   cycleGoal: "retrieval" | "transfer"
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]

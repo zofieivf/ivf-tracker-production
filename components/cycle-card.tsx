@@ -37,16 +37,22 @@ export function CycleCard({ cycle }: CycleCardProps) {
 
   const getCycleTypeDisplay = (type: string) => {
     switch (type) {
-      case "standard":
-        return "Standard"
-      case "mini":
-        return "Mini"
-      case "natural":
-        return "Natural"
       case "antagonist":
         return "Antagonist"
-      case "long":
-        return "Long"
+      case "long-lupron":
+        return "Long Lupron"
+      case "microdose-flare":
+        return "Microdose Flare"
+      case "mini-ivf":
+        return "Mini-IVF"
+      case "fresh":
+        return "Fresh Transfer"
+      case "frozen-medicated":
+        return "Frozen (Medicated)"
+      case "frozen-modified-natural":
+        return "Frozen (Modified Natural)"
+      case "frozen-natural":
+        return "Frozen (Natural)"
       case "other":
         return "Other"
       default:
