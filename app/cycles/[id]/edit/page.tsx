@@ -53,6 +53,7 @@ const formSchema = z.object({
   embryoDetails: z.enum(["day3-embryo", "day5-blastocyst", "day6-blastocyst", "day7-blastocyst"]).optional(),
   embryoGrade: z.string().optional(),
   pgtATested: z.enum(["euploid", "mosaic", "not-tested"]).optional(),
+  embryoSex: z.enum(["M", "F"]).optional(),
   retrievalCycleId: z.string().optional(),
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
@@ -82,6 +83,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       embryoDetails: cycle?.embryoDetails || undefined,
       embryoGrade: cycle?.embryoGrade || "",
       pgtATested: cycle?.pgtATested || undefined,
+      embryoSex: cycle?.embryoSex || undefined,
       retrievalCycleId: cycle?.retrievalCycleId || undefined,
       status: cycle?.status || "active",
     },
@@ -171,6 +173,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       embryoDetails: values.embryoDetails,
       embryoGrade: values.embryoGrade,
       pgtATested: values.pgtATested,
+      embryoSex: values.embryoSex,
       retrievalCycleId: values.retrievalCycleId,
       status: values.status,
     }
@@ -486,6 +489,31 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                         </SelectContent>
                       </Select>
                       <FormDescription>PGT-A (genetic testing) result for this embryo</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="embryoSex"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Embryo Sex</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select embryo sex" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="M">Male (M)</SelectItem>
+                          <SelectItem value="F">Female (F)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>The sex of the embryo being transferred</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

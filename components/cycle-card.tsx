@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { Calendar, User, Target, Beaker, Eye, Edit } from "lucide-react"
+import { Calendar, User, Target, Beaker, Eye, Edit, Zap, Heart } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -23,6 +23,28 @@ export function CycleCard({ cycle }: CycleCardProps) {
         return "bg-gray-100 text-gray-800"
     }
   }
+
+  const getCardStyling = (goal: string) => {
+    switch (goal) {
+      case "retrieval":
+        return {
+          borderColor: "border-l-blue-500",
+          headerBg: "bg-blue-50"
+        }
+      case "transfer":
+        return {
+          borderColor: "border-l-pink-500", 
+          headerBg: "bg-pink-50"
+        }
+      default:
+        return {
+          borderColor: "border-l-gray-300",
+          headerBg: "bg-gray-50"
+        }
+    }
+  }
+
+  const cardStyle = getCardStyling(cycle.cycleGoal)
 
   const getCycleGoalDisplay = (goal?: string) => {
     switch (goal) {
@@ -62,38 +84,59 @@ export function CycleCard({ cycle }: CycleCardProps) {
 
   const formatOutcomeSummary = () => {
     const outcome = cycle.outcome
-    if (!outcome) return null
-
     const summaryItems = []
     
     // Handle transfer cycles differently
     if (cycle.cycleGoal === "transfer") {
-      // Transfer Status
-      if (outcome.transferStatus) {
-        const statusText = outcome.transferStatus === "successful" ? "✓ Successful Transfer" : "✗ Transfer Failed"
-        const statusClass = outcome.transferStatus === "successful" ? "text-green-700 bg-green-100" : "text-red-700 bg-red-100"
-        summaryItems.push({ text: statusText, class: statusClass, isStatus: true })
+      // Embryo Information (add before transfer status)
+      if (cycle.embryoDetails) {
+        const stageText = cycle.embryoDetails.replace("-", " ").replace("day", "Day ")
+        summaryItems.push({ text: stageText, class: "text-blue-700 bg-blue-100", isStatus: true })
       }
       
-      // Beta HCG values (moved before Live Birth)
-      if (outcome.betaHcg1 !== undefined) {
-        const dayText = outcome.betaHcg1Day ? ` (Day ${outcome.betaHcg1Day})` : ""
-        summaryItems.push({ text: `Beta HCG 1: ${outcome.betaHcg1}${dayText}`, class: "", isStatus: false })
+      if (cycle.embryoGrade) {
+        summaryItems.push({ text: `Grade: ${cycle.embryoGrade}`, class: "", isStatus: false })
       }
       
-      if (outcome.betaHcg2 !== undefined) {
-        const dayText = outcome.betaHcg2Day ? ` (Day ${outcome.betaHcg2Day})` : ""
-        summaryItems.push({ text: `Beta HCG 2: ${outcome.betaHcg2}${dayText}`, class: "", isStatus: false })
+      if (cycle.pgtATested) {
+        const pgtText = cycle.pgtATested === "not-tested" ? "PGT-A: Not Tested" : `PGT-A: ${cycle.pgtATested}`
+        summaryItems.push({ text: pgtText, class: "", isStatus: false })
       }
       
-      // Live Birth (moved after Beta HCG)
-      if (outcome.liveBirth) {
-        const birthText = outcome.liveBirth === "yes" ? "🍼 Live Birth" : "No Live Birth"
-        const birthClass = outcome.liveBirth === "yes" ? "text-green-700 bg-green-100" : "text-gray-700 bg-gray-100"
-        summaryItems.push({ text: birthText, class: birthClass, isStatus: true })
+      if (cycle.embryoSex) {
+        const sexText = cycle.embryoSex === "M" ? "Male" : "Female"
+        summaryItems.push({ text: sexText, class: "", isStatus: false })
       }
-    } else {
-      // Handle retrieval cycles (existing logic)
+      
+      // Only show outcome-dependent items if outcome exists
+      if (outcome) {
+        // Transfer Status
+        if (outcome.transferStatus) {
+          const statusText = outcome.transferStatus === "successful" ? "✓ Successful Transfer" : "✗ Transfer Failed"
+          const statusClass = outcome.transferStatus === "successful" ? "text-green-700 bg-green-100" : "text-red-700 bg-red-100"
+          summaryItems.push({ text: statusText, class: statusClass, isStatus: true })
+        }
+        
+        // Beta HCG values (moved before Live Birth)
+        if (outcome.betaHcg1 !== undefined) {
+          const dayText = outcome.betaHcg1Day ? ` (Day ${outcome.betaHcg1Day})` : ""
+          summaryItems.push({ text: `Beta HCG 1: ${outcome.betaHcg1}${dayText}`, class: "", isStatus: false })
+        }
+        
+        if (outcome.betaHcg2 !== undefined) {
+          const dayText = outcome.betaHcg2Day ? ` (Day ${outcome.betaHcg2Day})` : ""
+          summaryItems.push({ text: `Beta HCG 2: ${outcome.betaHcg2}${dayText}`, class: "", isStatus: false })
+        }
+        
+        // Live Birth (moved after Beta HCG)
+        if (outcome.liveBirth) {
+          const birthText = outcome.liveBirth === "yes" ? "🍼 Live Birth" : "No Live Birth"
+          const birthClass = outcome.liveBirth === "yes" ? "text-green-700 bg-green-100" : "text-gray-700 bg-gray-100"
+          summaryItems.push({ text: birthText, class: birthClass, isStatus: true })
+        }
+      }
+    } else if (outcome) {
+      // Handle retrieval cycles (simplified logic) - only if outcome exists
       if (outcome.eggsRetrieved !== undefined) {
         summaryItems.push({ text: `${outcome.eggsRetrieved} eggs retrieved`, class: "", isStatus: false })
       }
@@ -102,21 +145,19 @@ export function CycleCard({ cycle }: CycleCardProps) {
         summaryItems.push({ text: `${outcome.fertilized} fertilized`, class: "", isStatus: false })
       }
       
-      if (outcome.day3Embryos !== undefined) {
-        summaryItems.push({ text: `${outcome.day3Embryos} day 3 embryos`, class: "", isStatus: false })
-      }
-      
+      // If there are blastocysts, show those instead of day 3 embryos
       if (outcome.blastocysts !== undefined) {
         summaryItems.push({ text: `${outcome.blastocysts} blastocysts`, class: "", isStatus: false })
+      } else if (outcome.day3Embryos !== undefined) {
+        // Only show day 3 embryos if no blastocysts
+        summaryItems.push({ text: `${outcome.day3Embryos} day 3 embryos`, class: "", isStatus: false })
       }
       
       if (outcome.euploidBlastocysts !== undefined) {
         summaryItems.push({ text: `${outcome.euploidBlastocysts} euploid`, class: "", isStatus: false })
       }
       
-      if (outcome.frozen !== undefined) {
-        summaryItems.push({ text: `${outcome.frozen} frozen`, class: "", isStatus: false })
-      }
+      // Removed frozen embryos count as requested
       
       if (outcome.embryosAvailableForTransfer !== undefined) {
         summaryItems.push({ text: `${outcome.embryosAvailableForTransfer} available for transfer`, class: "", isStatus: false })
@@ -127,8 +168,8 @@ export function CycleCard({ cycle }: CycleCardProps) {
   }
 
   return (
-    <Card className="hover:shadow-md transition-shadow w-full">
-      <CardHeader>
+    <Card className={`hover:shadow-md transition-shadow w-full border-l-4 ${cardStyle.borderColor}`}>
+      <CardHeader className={cardStyle.headerBg}>
         <div className="flex items-start justify-between">
           <div>
             <CardTitle className="text-xl">{cycle.name}</CardTitle>

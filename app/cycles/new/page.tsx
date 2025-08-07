@@ -42,6 +42,7 @@ const formSchema = z.object({
   embryoDetails: z.enum(["day3-embryo", "day5-blastocyst", "day6-blastocyst", "day7-blastocyst"]).optional(),
   embryoGrade: z.string().optional(),
   pgtATested: z.enum(["euploid", "mosaic", "not-tested"]).optional(),
+  embryoSex: z.enum(["M", "F"]).optional(),
   retrievalCycleId: z.string().optional(),
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
@@ -68,6 +69,7 @@ export default function NewCyclePage() {
       embryoDetails: undefined,
       embryoGrade: "",
       pgtATested: undefined,
+      embryoSex: undefined,
       retrievalCycleId: undefined,
       status: "active",
     },
@@ -76,6 +78,7 @@ export default function NewCyclePage() {
   const watchedStartDate = form.watch("startDate")
   const watchedDateOfBirth = form.watch("dateOfBirth")
   const watchedCycleGoal = form.watch("cycleGoal")
+  const watchedEmbryoDetails = form.watch("embryoDetails")
 
   // Get retrieval cycles for dropdown
   const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval")
@@ -101,18 +104,21 @@ export default function NewCyclePage() {
       form.setValue("embryoDetails", undefined)
       form.setValue("embryoGrade", "")
       form.setValue("pgtATested", undefined)
+      form.setValue("embryoSex", undefined)
       form.setValue("retrievalCycleId", undefined)
     } else if (currentGoal === "retrieval" && transferTypes.includes(currentCycleType)) {
       form.setValue("cycleType", "")
       form.setValue("embryoDetails", undefined)
       form.setValue("embryoGrade", "")
       form.setValue("pgtATested", undefined)
+      form.setValue("embryoSex", undefined)
       form.setValue("retrievalCycleId", undefined)
     } else if (currentGoal === "retrieval") {
       // Clear embryo details when switching to retrieval
       form.setValue("embryoDetails", undefined)
       form.setValue("embryoGrade", "")
       form.setValue("pgtATested", undefined)
+      form.setValue("embryoSex", undefined)
       form.setValue("retrievalCycleId", undefined)
     }
   }, [watchedCycleGoal, form])
@@ -132,6 +138,7 @@ export default function NewCyclePage() {
       embryoDetails: values.embryoDetails,
       embryoGrade: values.embryoGrade,
       pgtATested: values.pgtATested,
+      embryoSex: values.embryoSex,
       retrievalCycleId: values.retrievalCycleId,
       status: values.status,
       days: [],
@@ -402,7 +409,7 @@ export default function NewCyclePage() {
                 />
               )}
 
-              {watchedCycleGoal === "transfer" && (
+              {watchedCycleGoal === "transfer" && watchedEmbryoDetails && ["day5-blastocyst", "day6-blastocyst", "day7-blastocyst"].includes(watchedEmbryoDetails) && (
                 <FormField
                   control={form.control}
                   name="pgtATested"
@@ -422,6 +429,31 @@ export default function NewCyclePage() {
                         </SelectContent>
                       </Select>
                       <FormDescription>PGT-A (genetic testing) result for this embryo</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="embryoSex"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Embryo Sex</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select embryo sex" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="M">Male (M)</SelectItem>
+                          <SelectItem value="F">Female (F)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>The sex of the embryo being transferred</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}

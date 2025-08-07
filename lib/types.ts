@@ -49,6 +49,7 @@ export interface IVFCycle {
   embryoDetails?: "day3-embryo" | "day5-blastocyst" | "day6-blastocyst" | "day7-blastocyst"
   embryoGrade?: string
   pgtATested?: "euploid" | "mosaic" | "not-tested"
+  embryoSex?: "M" | "F"
   retrievalCycleId?: string
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]

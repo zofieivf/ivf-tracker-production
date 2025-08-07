@@ -81,11 +81,14 @@ interface CycleOutcomeCardProps {
 
 export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const router = useRouter()
-  const { updateCycleOutcome } = useIVFStore()
+  const { updateCycleOutcome, cycles } = useIVFStore()
   const [isEditing, setIsEditing] = useState(!cycle.outcome)
   const [embryoGrades, setEmbryoGrades] = useState<EmbryoGrade[]>(cycle.outcome?.day3EmbryoGrades || [])
   
   const isTransferCycle = cycle.cycleGoal === "transfer"
+  
+  // Get retrieval cycle name for display
+  const retrievalCycle = cycles.find(c => c.id === cycle.retrievalCycleId)
 
   // Use different forms based on cycle type
   const retrievalForm = useForm<z.infer<typeof retrievalFormSchema>>({
@@ -193,6 +196,51 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
           </Button>
         </CardHeader>
         <CardContent>
+          {/* Embryo Information - Only for transfer cycles */}
+          {isTransferCycle && (
+            <div className="mb-6 p-4 bg-muted/50 rounded-lg">
+              <h4 className="text-sm font-medium mb-3">Embryo Information</h4>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                {cycle.embryoDetails && (
+                  <div>
+                    <p className="font-medium">Embryo Stage</p>
+                    <p className="capitalize">
+                      {cycle.embryoDetails.replace("-", " ").replace("day", "Day ")}
+                    </p>
+                  </div>
+                )}
+                
+                {cycle.embryoGrade && (
+                  <div>
+                    <p className="font-medium">Grade</p>
+                    <p>{cycle.embryoGrade}</p>
+                  </div>
+                )}
+                
+                {cycle.pgtATested && (
+                  <div>
+                    <p className="font-medium">PGT-A Tested</p>
+                    <p className="capitalize">{cycle.pgtATested}</p>
+                  </div>
+                )}
+                
+                {cycle.embryoSex && (
+                  <div>
+                    <p className="font-medium">Embryo Sex</p>
+                    <p>{cycle.embryoSex === "M" ? "Male" : "Female"} ({cycle.embryoSex})</p>
+                  </div>
+                )}
+                
+                {retrievalCycle && (
+                  <div className="md:col-span-2">
+                    <p className="font-medium">From Retrieval Cycle</p>
+                    <p>{retrievalCycle.name}</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {isTransferCycle ? (
               // Transfer cycle outcome display
@@ -686,27 +734,35 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                               />
                             </TableCell>
                             <TableCell>
-                              <Select
-                                value={embryo.pgtA || ""}
-                                onValueChange={(value) => updateEmbryoField(embryo.id, "pgtA", value)}
-                              >
-                                <SelectTrigger className="w-28">
-                                  <SelectValue placeholder="Select" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="Euploid">Euploid</SelectItem>
-                                  <SelectItem value="Mosaic">Mosaic</SelectItem>
-                                  <SelectItem value="Aneuploid">Aneuploid</SelectItem>
-                                </SelectContent>
-                              </Select>
+                              {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
+                                <Select
+                                  value={embryo.pgtA || ""}
+                                  onValueChange={(value) => updateEmbryoField(embryo.id, "pgtA", value)}
+                                >
+                                  <SelectTrigger className="w-28">
+                                    <SelectValue placeholder="Select" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="Euploid">Euploid</SelectItem>
+                                    <SelectItem value="Mosaic">Mosaic</SelectItem>
+                                    <SelectItem value="Aneuploid">Aneuploid</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
-                              <Input
-                                value={embryo.sex || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "sex", e.target.value)}
-                                placeholder="M/F"
-                                className="w-16"
-                              />
+                              {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
+                                <Input
+                                  value={embryo.sex || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "sex", e.target.value)}
+                                  placeholder="M/F"
+                                  className="w-16"
+                                />
+                              ) : (
+                                <span className="text-muted-foreground text-sm">-</span>
+                              )}
                             </TableCell>
                             <TableCell>
                               <Input

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { z } from "zod"
@@ -117,6 +117,10 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
       </div>
     )
   }
+
+  // Use cycle goal to determine what monitoring options to show
+  const shouldShowLiningCheck = cycle.cycleGoal !== "retrieval"
+  const shouldShowFollicleMeasurements = cycle.cycleGoal !== "transfer"
 
   function addMedication() {
     const newMed = { id: uuidv4(), name: "", dosage: "", hour: "", minute: "", ampm: "", taken: false, refrigerated: false }
@@ -419,104 +423,108 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
                 </TabsContent>
 
                 <TabsContent value="monitoring" className="space-y-6">
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <FormField
-                        control={form.control}
-                        name="hasFollicleSizes"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>Follicle Measurements</FormLabel>
-                              <FormDescription>Did you have follicle measurements on this day?</FormDescription>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {form.watch("hasFollicleSizes") && (
-                      <div className="space-y-4 border rounded-md p-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Left Ovary Follicles (mm)</label>
-                            <Input
-                              value={leftFollicles}
-                              onChange={(e) => setLeftFollicles(e.target.value)}
-                              placeholder="e.g., 18, 16, 14"
-                            />
-                            <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
-                          </div>
-
-                          <div className="space-y-2">
-                            <label className="text-sm font-medium">Right Ovary Follicles (mm)</label>
-                            <Input
-                              value={rightFollicles}
-                              onChange={(e) => setRightFollicles(e.target.value)}
-                              placeholder="e.g., 17, 15, 13"
-                            />
-                            <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="flex items-center space-x-2">
-                      <FormField
-                        control={form.control}
-                        name="follicleSizes.liningCheck"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>
-                                Lining Check
-                              </FormLabel>
-                              <FormDescription>
-                                Check if endometrial lining was measured
-                              </FormDescription>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    {watchLiningCheck && (
-                      <div className="space-y-4 border rounded-md p-4">
+                  {shouldShowFollicleMeasurements && (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
                         <FormField
                           control={form.control}
-                          name="follicleSizes.liningThickness"
+                          name="hasFollicleSizes"
                           render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Endometrial Lining (mm)</FormLabel>
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
                               <FormControl>
-                                <Input
-                                  type="number"
-                                  step="0.1"
-                                  placeholder="e.g., 8.5"
-                                  {...field}
-                                  onChange={(e) =>
-                                    field.onChange(e.target.value ? Number.parseFloat(e.target.value) : undefined)
-                                  }
-                                />
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
                               </FormControl>
-                              <FormMessage />
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Follicle Measurements</FormLabel>
+                                <FormDescription>Did you have follicle measurements on this day?</FormDescription>
+                              </div>
                             </FormItem>
                           )}
                         />
                       </div>
-                    )}
-                  </div>
+
+                      {form.watch("hasFollicleSizes") && (
+                        <div className="space-y-4 border rounded-md p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Left Ovary Follicles (mm)</label>
+                              <Input
+                                value={leftFollicles}
+                                onChange={(e) => setLeftFollicles(e.target.value)}
+                                placeholder="e.g., 18, 16, 14"
+                              />
+                              <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Right Ovary Follicles (mm)</label>
+                              <Input
+                                value={rightFollicles}
+                                onChange={(e) => setRightFollicles(e.target.value)}
+                                placeholder="e.g., 17, 15, 13"
+                              />
+                              <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {shouldShowLiningCheck && (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <FormField
+                          control={form.control}
+                          name="follicleSizes.liningCheck"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                  Lining Check
+                                </FormLabel>
+                                <FormDescription>
+                                  Check if endometrial lining was measured
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {watchLiningCheck && (
+                        <div className="space-y-4 border rounded-md p-4">
+                          <FormField
+                            control={form.control}
+                            name="follicleSizes.liningThickness"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Endometrial Lining (mm)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="e.g., 8.5"
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.value ? Number.parseFloat(e.target.value) : undefined)
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   <div className="space-y-4">
                     <div className="flex items-center space-x-2">
