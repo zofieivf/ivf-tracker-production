@@ -46,6 +46,10 @@ export interface IVFCycle {
   ageAtStart?: number
   cycleType: "antagonist" | "long-lupron" | "microdose-flare" | "mini-ivf" | "other" | "fresh" | "frozen-medicated" | "frozen-modified-natural" | "frozen-natural"
   cycleGoal: "retrieval" | "transfer"
+  embryoDetails?: "day3-embryo" | "day5-blastocyst" | "day6-blastocyst" | "day7-blastocyst"
+  embryoGrade?: string
+  pgtATested?: "euploid" | "mosaic" | "not-tested"
+  retrievalCycleId?: string
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]
   outcome?: CycleOutcome
@@ -64,6 +68,7 @@ export interface EmbryoGrade {
 }
 
 export interface CycleOutcome {
+  // For Retrieval cycles
   eggsRetrieved?: number
   matureEggs?: number
   fertilizationMethod?: "IVF" | "ICSI"
@@ -74,6 +79,14 @@ export interface CycleOutcome {
   euploidBlastocysts?: number
   frozen?: number
   embryosAvailableForTransfer?: number
+  
+  // For Transfer cycles
+  betaHcg1?: number
+  betaHcg1Day?: number
+  betaHcg2?: number
+  betaHcg2Day?: number
+  transferStatus?: "successful" | "not-successful"
+  liveBirth?: "yes" | "no"
 }
 
 export type FertilityProcedure = 

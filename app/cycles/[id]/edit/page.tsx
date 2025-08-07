@@ -50,6 +50,10 @@ const formSchema = z.object({
   cycleGoal: z.enum(["retrieval", "transfer"], {
     required_error: "Cycle goal is required",
   }),
+  embryoDetails: z.enum(["day3-embryo", "day5-blastocyst", "day6-blastocyst", "day7-blastocyst"]).optional(),
+  embryoGrade: z.string().optional(),
+  pgtATested: z.enum(["euploid", "mosaic", "not-tested"]).optional(),
+  retrievalCycleId: z.string().optional(),
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
   }),
@@ -57,7 +61,7 @@ const formSchema = z.object({
 
 export default function EditCyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { getCycleById, updateCycle, deleteCycle } = useIVFStore()
+  const { getCycleById, updateCycle, deleteCycle, cycles } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [mounted, setMounted] = useState(false)
 
@@ -75,6 +79,10 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       dateOfBirth: cycle?.dateOfBirth ? parseISO(cycle.dateOfBirth) : undefined,
       cycleType: cycle?.cycleType || "standard",
       cycleGoal: cycle?.cycleGoal || "retrieval",
+      embryoDetails: cycle?.embryoDetails || undefined,
+      embryoGrade: cycle?.embryoGrade || "",
+      pgtATested: cycle?.pgtATested || undefined,
+      retrievalCycleId: cycle?.retrievalCycleId || undefined,
       status: cycle?.status || "active",
     },
   })
@@ -82,6 +90,9 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
   const watchedStartDate = form.watch("startDate")
   const watchedDateOfBirth = form.watch("dateOfBirth")
   const watchedCycleGoal = form.watch("cycleGoal")
+
+  // Get retrieval cycles for dropdown
+  const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval" && c.id !== params.id)
 
   const calculateAge = () => {
     if (watchedStartDate && watchedDateOfBirth) {
@@ -101,8 +112,22 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
     
     if (currentGoal === "transfer" && retrievalTypes.includes(currentCycleType)) {
       form.setValue("cycleType", "")
+      form.setValue("embryoDetails", undefined)
+      form.setValue("embryoGrade", "")
+      form.setValue("pgtATested", undefined)
+      form.setValue("retrievalCycleId", undefined)
     } else if (currentGoal === "retrieval" && transferTypes.includes(currentCycleType)) {
       form.setValue("cycleType", "")
+      form.setValue("embryoDetails", undefined)
+      form.setValue("embryoGrade", "")
+      form.setValue("pgtATested", undefined)
+      form.setValue("retrievalCycleId", undefined)
+    } else if (currentGoal === "retrieval") {
+      // Clear embryo details when switching to retrieval
+      form.setValue("embryoDetails", undefined)
+      form.setValue("embryoGrade", "")
+      form.setValue("pgtATested", undefined)
+      form.setValue("retrievalCycleId", undefined)
     }
   }, [watchedCycleGoal, form])
 
@@ -143,6 +168,10 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       ageAtStart,
       cycleType: values.cycleType,
       cycleGoal: values.cycleGoal,
+      embryoDetails: values.embryoDetails,
+      embryoGrade: values.embryoGrade,
+      pgtATested: values.pgtATested,
+      retrievalCycleId: values.retrievalCycleId,
       status: values.status,
     }
 
@@ -206,6 +235,29 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                       <Input placeholder="e.g., IVF Cycle #1" {...field} />
                     </FormControl>
                     <FormDescription>Give your cycle a name to easily identify it</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="cycleGoal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Cycle Goal</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select cycle goal" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
+                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -370,28 +422,107 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                 )}
               />
 
-              <FormField
-                control={form.control}
-                name="cycleGoal"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Cycle Goal</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="embryoDetails"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Embryo Details</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select embryo stage" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="day3-embryo">Day 3 Embryo</SelectItem>
+                          <SelectItem value="day5-blastocyst">Day 5 Blastocyst</SelectItem>
+                          <SelectItem value="day6-blastocyst">Day 6 Blastocyst</SelectItem>
+                          <SelectItem value="day7-blastocyst">Day 7 Blastocyst</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>The developmental stage of the embryo being transferred</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="embryoGrade"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Embryo Grade</FormLabel>
                       <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select cycle goal" />
-                        </SelectTrigger>
+                        <Input placeholder="e.g., AA, AB, 5AA, etc." {...field} />
                       </FormControl>
-                      <SelectContent>
-                        <SelectItem value="retrieval">Egg Retrieval</SelectItem>
-                        <SelectItem value="transfer">Embryo Transfer</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>The primary goal of this IVF cycle</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+                      <FormDescription>The grade or quality rating of the embryo</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="pgtATested"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PGT-A Tested</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select PGT-A result" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="euploid">Euploid</SelectItem>
+                          <SelectItem value="mosaic">Mosaic</SelectItem>
+                          <SelectItem value="not-tested">Not Tested</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>PGT-A (genetic testing) result for this embryo</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+
+              {watchedCycleGoal === "transfer" && (
+                <FormField
+                  control={form.control}
+                  name="retrievalCycleId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Which Egg Retrieval Cycle was embryo from?</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select retrieval cycle" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {retrievalCycles.length === 0 ? (
+                            <SelectItem value="" disabled>No retrieval cycles found</SelectItem>
+                          ) : (
+                            retrievalCycles.map((cycle) => (
+                              <SelectItem key={cycle.id} value={cycle.id}>
+                                {cycle.name}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>Select the retrieval cycle this embryo originated from</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
 
               <FormField
                 control={form.control}

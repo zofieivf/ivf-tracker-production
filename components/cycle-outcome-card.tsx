@@ -16,7 +16,8 @@ import type { IVFCycle, EmbryoGrade } from "@/lib/types"
 import { useIVFStore } from "@/lib/store"
 import { v4 as uuidv4 } from "uuid"
 
-const formSchema = z.object({
+// Schema for retrieval cycles
+const retrievalFormSchema = z.object({
   eggsRetrieved: z
     .string()
     .optional()
@@ -52,6 +53,28 @@ const formSchema = z.object({
     .transform((val) => (val ? Number.parseInt(val) : undefined)),
 })
 
+// Schema for transfer cycles
+const transferFormSchema = z.object({
+  betaHcg1: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  betaHcg1Day: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  betaHcg2: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  betaHcg2Day: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  transferStatus: z.enum(["successful", "not-successful"]).optional(),
+  liveBirth: z.enum(["yes", "no"]).optional(),
+})
+
 interface CycleOutcomeCardProps {
   cycle: IVFCycle
 }
@@ -61,9 +84,12 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const { updateCycleOutcome } = useIVFStore()
   const [isEditing, setIsEditing] = useState(!cycle.outcome)
   const [embryoGrades, setEmbryoGrades] = useState<EmbryoGrade[]>(cycle.outcome?.day3EmbryoGrades || [])
+  
+  const isTransferCycle = cycle.cycleGoal === "transfer"
 
-  const form = useForm<z.infer<typeof formSchema>>({
-    resolver: zodResolver(formSchema),
+  // Use different forms based on cycle type
+  const retrievalForm = useForm<z.infer<typeof retrievalFormSchema>>({
+    resolver: zodResolver(retrievalFormSchema),
     defaultValues: {
       eggsRetrieved: cycle.outcome?.eggsRetrieved?.toString() || "",
       matureEggs: cycle.outcome?.matureEggs?.toString() || "",
@@ -77,10 +103,26 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
     },
   })
 
-  // Watch for changes in embryo count
-  const day3Count = form.watch("day3Embryos")
+  const transferForm = useForm<z.infer<typeof transferFormSchema>>({
+    resolver: zodResolver(transferFormSchema),
+    defaultValues: {
+      betaHcg1: cycle.outcome?.betaHcg1?.toString() || "",
+      betaHcg1Day: cycle.outcome?.betaHcg1Day?.toString() || "",
+      betaHcg2: cycle.outcome?.betaHcg2?.toString() || "",
+      betaHcg2Day: cycle.outcome?.betaHcg2Day?.toString() || "",
+      transferStatus: cycle.outcome?.transferStatus || undefined,
+      liveBirth: cycle.outcome?.liveBirth || undefined,
+    },
+  })
+
+  const form = isTransferCycle ? transferForm : retrievalForm
+
+  // Watch for changes in embryo count (retrieval cycles only)
+  const day3Count = !isTransferCycle ? retrievalForm.watch("day3Embryos") : 0
   
   useEffect(() => {
+    if (isTransferCycle) return // Skip for transfer cycles
+    
     const count = parseInt(day3Count) || 0
     setEmbryoGrades(prevGrades => {
       if (count === 0) return []
@@ -101,14 +143,30 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
       
       return newGrades
     })
-  }, [day3Count])
+  }, [day3Count, isTransferCycle])
 
 
-  function onSubmit(values: z.infer<typeof formSchema>) {
-    const outcomeData = {
-      ...values,
-      day3EmbryoGrades: embryoGrades.length > 0 ? embryoGrades : undefined
+  function onSubmit(values: any) {
+    let outcomeData: any
+    
+    if (isTransferCycle) {
+      // For transfer cycles, save all transfer data
+      outcomeData = {
+        betaHcg1: values.betaHcg1,
+        betaHcg1Day: values.betaHcg1Day,
+        betaHcg2: values.betaHcg2,
+        betaHcg2Day: values.betaHcg2Day,
+        transferStatus: values.transferStatus,
+        liveBirth: values.liveBirth,
+      }
+    } else {
+      // For retrieval cycles, save all retrieval data
+      outcomeData = {
+        ...values,
+        day3EmbryoGrades: embryoGrades.length > 0 ? embryoGrades : undefined
+      }
     }
+    
     updateCycleOutcome(cycle.id, outcomeData)
     setIsEditing(false)
   }
@@ -136,72 +194,114 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-            {cycle.outcome.eggsRetrieved !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Eggs Retrieved</p>
-                <p className="text-2xl font-bold">{cycle.outcome.eggsRetrieved}</p>
-              </div>
-            )}
+            {isTransferCycle ? (
+              // Transfer cycle outcome display
+              <>
+                {cycle.outcome.betaHcg1 !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">
+                      Beta HCG 1 {cycle.outcome.betaHcg1Day && `(Day ${cycle.outcome.betaHcg1Day})`}
+                    </p>
+                    <p className="text-2xl font-bold">{cycle.outcome.betaHcg1}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.matureEggs !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Mature Eggs</p>
-                <p className="text-2xl font-bold">{cycle.outcome.matureEggs}</p>
-              </div>
-            )}
+                {cycle.outcome.betaHcg2 !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">
+                      Beta HCG 2 {cycle.outcome.betaHcg2Day && `(Day ${cycle.outcome.betaHcg2Day})`}
+                    </p>
+                    <p className="text-2xl font-bold">{cycle.outcome.betaHcg2}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.fertilizationMethod && (
-              <div>
-                <p className="text-sm font-medium">Fertilization Method</p>
-                <p className="text-2xl font-bold">{cycle.outcome.fertilizationMethod}</p>
-              </div>
-            )}
+                {cycle.outcome.transferStatus && (
+                  <div>
+                    <p className="text-sm font-medium">Transfer Status</p>
+                    <p className="text-2xl font-bold capitalize">
+                      {cycle.outcome.transferStatus === "not-successful" ? "Not Successful" : "Successful"}
+                    </p>
+                  </div>
+                )}
 
-            {cycle.outcome.fertilized !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Fertilized</p>
-                <p className="text-2xl font-bold">{cycle.outcome.fertilized}</p>
-              </div>
-            )}
+                {cycle.outcome.liveBirth && (
+                  <div>
+                    <p className="text-sm font-medium">Live Birth</p>
+                    <p className="text-2xl font-bold capitalize">{cycle.outcome.liveBirth}</p>
+                  </div>
+                )}
+              </>
+            ) : (
+              // Retrieval cycle outcome display
+              <>
+                {cycle.outcome.eggsRetrieved !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Eggs Retrieved</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.eggsRetrieved}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.day3Embryos !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Day 3 Embryos</p>
-                <p className="text-2xl font-bold">{cycle.outcome.day3Embryos}</p>
-              </div>
-            )}
+                {cycle.outcome.matureEggs !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Mature Eggs</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.matureEggs}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.blastocysts !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Day 5/6/7 Blastocysts</p>
-                <p className="text-2xl font-bold">{cycle.outcome.blastocysts}</p>
-              </div>
-            )}
+                {cycle.outcome.fertilizationMethod && (
+                  <div>
+                    <p className="text-sm font-medium">Fertilization Method</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.fertilizationMethod}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.euploidBlastocysts !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Euploid Blastocysts</p>
-                <p className="text-2xl font-bold">{cycle.outcome.euploidBlastocysts}</p>
-              </div>
-            )}
+                {cycle.outcome.fertilized !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Fertilized</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.fertilized}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.frozen !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Frozen</p>
-                <p className="text-2xl font-bold">{cycle.outcome.frozen}</p>
-              </div>
-            )}
+                {cycle.outcome.day3Embryos !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Day 3 Embryos</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.day3Embryos}</p>
+                  </div>
+                )}
 
-            {cycle.outcome.embryosAvailableForTransfer !== undefined && (
-              <div>
-                <p className="text-sm font-medium">Embryos Available for Transfer</p>
-                <p className="text-2xl font-bold">{cycle.outcome.embryosAvailableForTransfer}</p>
-              </div>
+                {cycle.outcome.blastocysts !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Day 5/6/7 Blastocysts</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.blastocysts}</p>
+                  </div>
+                )}
+
+                {cycle.outcome.euploidBlastocysts !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Euploid Blastocysts</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.euploidBlastocysts}</p>
+                  </div>
+                )}
+
+                {cycle.outcome.frozen !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Frozen</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.frozen}</p>
+                  </div>
+                )}
+
+                {cycle.outcome.embryosAvailableForTransfer !== undefined && (
+                  <div>
+                    <p className="text-sm font-medium">Embryos Available for Transfer</p>
+                    <p className="text-2xl font-bold">{cycle.outcome.embryosAvailableForTransfer}</p>
+                  </div>
+                )}
+              </>
             )}
           </div>
 
-          {/* Day 3 Embryo Details */}
-          {cycle.outcome.day3EmbryoGrades && cycle.outcome.day3EmbryoGrades.length > 0 && (
+          {/* Day 3 Embryo Details - Only for retrieval cycles */}
+          {!isTransferCycle && cycle.outcome.day3EmbryoGrades && cycle.outcome.day3EmbryoGrades.length > 0 && (
             <div className="mt-6">
               <h4 className="text-sm font-medium mb-3">Embryo Details and Progression</h4>
               <div className="overflow-x-auto">
@@ -248,25 +348,166 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
     <Card>
       <CardHeader>
         <CardTitle>Cycle Outcome</CardTitle>
-        <CardDescription>Record the results and outcomes from your IVF cycle</CardDescription>
+        <CardDescription>
+          {isTransferCycle 
+            ? "Record your Beta HCG results from the transfer"
+            : "Record the results and outcomes from your IVF cycle"
+          }
+        </CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <FormField
-                control={form.control}
-                name="eggsRetrieved"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Eggs Retrieved</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            {isTransferCycle ? (
+              // Transfer cycle form fields
+              <div className="space-y-6">
+                {/* Beta HCG 1 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="betaHcg1Day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Beta HCG 1 - Days Post-Transfer</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select day" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 21 }, (_, i) => i + 7).map((day) => (
+                              <SelectItem key={day} value={day.toString()}>
+                                Day {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="betaHcg1"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Beta HCG 1 Value</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="Enter value in mIU/mL" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Beta HCG 2 */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="betaHcg2Day"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Beta HCG 2 - Days Post-Transfer</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select day" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {Array.from({ length: 21 }, (_, i) => i + 7).map((day) => (
+                              <SelectItem key={day} value={day.toString()}>
+                                Day {day}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="betaHcg2"
+                    render={({ field }) => (
+                      <FormItem className="md:col-span-2">
+                        <FormLabel>Beta HCG 2 Value</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="Enter value in mIU/mL" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                {/* Transfer Status and Live Birth */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <FormField
+                    control={form.control}
+                    name="transferStatus"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Transfer Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select status" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="successful">Successful</SelectItem>
+                            <SelectItem value="not-successful">Not Successful</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="liveBirth"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Live Birth</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select option" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="yes">Yes</SelectItem>
+                            <SelectItem value="no">No</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+            ) : (
+              // Retrieval cycle form fields
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="eggsRetrieved"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Eggs Retrieved</FormLabel>
+                      <FormControl>
+                        <Input type="number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
               <FormField
                 control={form.control}
@@ -489,8 +730,9 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                     </Table>
                   </div>
                 </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </CardContent>
           <CardFooter className="flex justify-between">
             {cycle.outcome && (

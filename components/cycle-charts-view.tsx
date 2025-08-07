@@ -25,7 +25,511 @@ interface CycleChartsViewProps {
 }
 
 export function CycleChartsView({ cycle }: CycleChartsViewProps) {
-  // Process follicle growth data
+  const isTransferCycle = cycle.cycleGoal === "transfer"
+  
+  // For transfer cycles, show different content
+  if (isTransferCycle) {
+    // Process hormone data for transfer cycles (same logic as retrieval cycles)
+    const transferHormoneData = useMemo(() => {
+      const hormoneMap = new Map<number, any>()
+
+      cycle.days
+        .filter((day) => day.bloodwork && day.bloodwork.length > 0)
+        .forEach((day) => {
+          const dayData = {
+            day: day.cycleDay,
+            date: format(parseISO(day.date), "MMM d"),
+          }
+
+          day.bloodwork?.forEach((result) => {
+            const value = Number.parseFloat(result.value)
+            if (!isNaN(value)) {
+              const testName = result.test.toLowerCase()
+              if (testName.includes("estradiol") || testName.includes("e2")) {
+                dayData.estradiol = value
+              } else if (testName.includes("lh")) {
+                dayData.lh = value
+              } else if (testName.includes("fsh")) {
+                dayData.fsh = value
+              } else if (testName.includes("progesterone")) {
+                dayData.progesterone = value
+              } else if (testName.includes("hcg") || testName.includes("beta")) {
+                dayData.hcg = value
+              }
+            }
+          })
+
+          hormoneMap.set(day.cycleDay, { ...hormoneMap.get(day.cycleDay), ...dayData })
+        })
+
+      return Array.from(hormoneMap.values()).sort((a, b) => a.day - b.day)
+    }, [cycle.days])
+
+    // Process lining thickness data for transfer cycles
+    const transferLiningData = useMemo(() => {
+      return cycle.days
+        .filter((day) => day.follicleSizes?.liningThickness)
+        .map((day) => ({
+          day: day.cycleDay,
+          date: format(parseISO(day.date), "MMM d"),
+          liningThickness: day.follicleSizes?.liningThickness || 0,
+        }))
+        .sort((a, b) => a.day - b.day)
+    }, [cycle.days])
+
+    const chartConfig = {
+      estradiol: {
+        label: "Estradiol",
+        color: "#3b82f6",
+      },
+      lh: {
+        label: "LH",
+        color: "#10b981",
+      },
+      fsh: {
+        label: "FSH",
+        color: "#f59e0b",
+      },
+      progesterone: {
+        label: "Progesterone",
+        color: "#ef4444",
+      },
+      hcg: {
+        label: "Beta HCG",
+        color: "#8b5cf6",
+      },
+      liningThickness: {
+        label: "Lining Thickness",
+        color: "#8b5cf6",
+      },
+    }
+
+    return (
+      <div className="space-y-6">
+        {/* Hormone Level Charts for Transfer Cycles */}
+        {transferHormoneData.some((d) => d.estradiol !== undefined) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Estradiol (E2) Levels</CardTitle>
+                  <CardDescription>Estradiol hormone levels during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferHormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "pg/mL", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                Estradiol: {data.estradiol} pg/mL
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="estradiol"
+                      stroke={chartConfig.estradiol.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="Estradiol"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {transferHormoneData.some((d) => d.progesterone !== undefined) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Progesterone Levels</CardTitle>
+                  <CardDescription>Progesterone hormone levels during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferHormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "ng/mL", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                Progesterone: {data.progesterone} ng/mL
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="progesterone"
+                      stroke={chartConfig.progesterone.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="Progesterone"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {transferHormoneData.some((d) => d.lh !== undefined) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>LH (Luteinizing Hormone) Levels</CardTitle>
+                  <CardDescription>LH hormone levels during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferHormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "mIU/mL", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                LH: {data.lh} mIU/mL
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="lh"
+                      stroke={chartConfig.lh.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="LH"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {transferHormoneData.some((d) => d.fsh !== undefined) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>FSH (Follicle Stimulating Hormone) Levels</CardTitle>
+                  <CardDescription>FSH hormone levels during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferHormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "mIU/mL", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                FSH: {data.fsh} mIU/mL
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="fsh"
+                      stroke={chartConfig.fsh.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="FSH"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {transferHormoneData.some((d) => d.hcg !== undefined) && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Beta HCG Levels Over Time</CardTitle>
+                  <CardDescription>Beta HCG hormone levels from bloodwork during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferHormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      label={{ value: "mIU/mL", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                Beta HCG: {data.hcg} mIU/mL
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="hcg"
+                      stroke={chartConfig.hcg.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="Beta HCG"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Endometrial Lining Thickness for Transfer Cycles */}
+        {transferLiningData.length > 0 && (
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Activity className="h-5 w-5 text-primary" />
+                <div>
+                  <CardTitle>Endometrial Lining Thickness</CardTitle>
+                  <CardDescription>Endometrial lining measurements during transfer cycle</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="w-full h-[300px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={transferLiningData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                    <YAxis
+                      tick={{ fontSize: 12 }}
+                      tickLine={false}
+                      axisLine={false}
+                      domain={[0, "dataMax + 2"]}
+                      label={{ value: "mm", angle: -90, position: "insideLeft" }}
+                    />
+                    <ChartTooltip
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload
+                          return (
+                            <div className="bg-background border rounded-lg shadow-lg p-3">
+                              <p className="font-medium">Day {data.day} ({label})</p>
+                              <p className="text-sm text-muted-foreground">
+                                Lining Thickness: {data.liningThickness}mm
+                              </p>
+                            </div>
+                          )
+                        }
+                        return null
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="liningThickness"
+                      stroke={chartConfig.liningThickness.color}
+                      strokeWidth={3}
+                      dot={{ r: 5 }}
+                      name="Lining Thickness"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Beta HCG Results and Transfer Outcomes */}
+        {cycle.outcome?.betaHcg1 !== undefined || cycle.outcome?.betaHcg2 !== undefined || cycle.outcome?.transferStatus || cycle.outcome?.liveBirth ? (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TestTube className="h-5 w-5" />
+                Beta HCG Results
+              </CardTitle>
+              <CardDescription>
+                Beta HCG levels following embryo transfer
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {cycle.outcome.betaHcg1 !== undefined && (
+                  <div className="text-center p-6 border rounded-lg">
+                    <div className="text-3xl font-bold text-blue-600">{cycle.outcome.betaHcg1}</div>
+                    <p className="text-sm text-muted-foreground">
+                      Beta HCG 1 {cycle.outcome.betaHcg1Day && `(Day ${cycle.outcome.betaHcg1Day})`} (mIU/mL)
+                    </p>
+                  </div>
+                )}
+                {cycle.outcome.betaHcg2 !== undefined && (
+                  <div className="text-center p-6 border rounded-lg">
+                    <div className="text-3xl font-bold text-green-600">{cycle.outcome.betaHcg2}</div>
+                    <p className="text-sm text-muted-foreground">
+                      Beta HCG 2 {cycle.outcome.betaHcg2Day && `(Day ${cycle.outcome.betaHcg2Day})`} (mIU/mL)
+                    </p>
+                  </div>
+                )}
+              </div>
+              
+              {/* Show progression if both values are available */}
+              {cycle.outcome.betaHcg1 !== undefined && cycle.outcome.betaHcg2 !== undefined && (
+                <div className="mt-6 text-center p-4 bg-gray-50 rounded-lg">
+                  <div className="text-lg font-semibold">
+                    Progression Analysis
+                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {cycle.outcome.betaHcg2 > cycle.outcome.betaHcg1 ? 
+                      `Increase from Beta HCG 1 to Beta HCG 2: ${((cycle.outcome.betaHcg2 - cycle.outcome.betaHcg1) / cycle.outcome.betaHcg1 * 100).toFixed(1)}%` :
+                      "Levels decreased from Beta HCG 1 to Beta HCG 2"
+                    }
+                  </p>
+                  {cycle.outcome.betaHcg1Day && cycle.outcome.betaHcg2Day && cycle.outcome.betaHcg2Day > cycle.outcome.betaHcg1Day && cycle.outcome.betaHcg2 > cycle.outcome.betaHcg1 && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Doubling time: {(Math.log(2) / Math.log(cycle.outcome.betaHcg2 / cycle.outcome.betaHcg1) * (cycle.outcome.betaHcg2Day - cycle.outcome.betaHcg1Day)).toFixed(1)} days
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* Transfer Status and Live Birth */}
+              {(cycle.outcome.transferStatus || cycle.outcome.liveBirth) && (
+                <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {cycle.outcome.transferStatus && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className={`text-2xl font-bold ${cycle.outcome.transferStatus === "successful" ? "text-green-600" : "text-red-600"}`}>
+                        {cycle.outcome.transferStatus === "not-successful" ? "Not Successful" : "Successful"}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Transfer Status</p>
+                    </div>
+                  )}
+
+                  {cycle.outcome.liveBirth && (
+                    <div className="text-center p-4 border rounded-lg">
+                      <div className={`text-2xl font-bold ${cycle.outcome.liveBirth === "yes" ? "text-green-600" : "text-gray-600"}`}>
+                        {cycle.outcome.liveBirth === "yes" ? "Yes" : "No"}
+                      </div>
+                      <p className="text-sm text-muted-foreground">Live Birth</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        ) : (
+          // Show empty state when no data is available
+          transferHormoneData.length === 0 && transferLiningData.length === 0 && (
+            <Card>
+              <CardContent className="p-6">
+                <div className="text-center">
+                  <Activity className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
+                  <h3 className="text-lg font-semibold mb-2">No Monitoring Data Yet</h3>
+                  <p className="text-muted-foreground">
+                    Add daily tracking data to see hormone levels and lining thickness charts.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )
+        )}
+      </div>
+    )
+  }
+  
+  // Process follicle growth data (for retrieval cycles)
   const follicleGrowthData = useMemo(() => {
     return cycle.days
       .filter((day) => day.follicleSizes)

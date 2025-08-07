@@ -66,32 +66,61 @@ export function CycleCard({ cycle }: CycleCardProps) {
 
     const summaryItems = []
     
-    if (outcome.eggsRetrieved !== undefined) {
-      summaryItems.push(`${outcome.eggsRetrieved} eggs retrieved`)
-    }
-    
-    if (outcome.fertilized !== undefined) {
-      summaryItems.push(`${outcome.fertilized} fertilized`)
-    }
-    
-    if (outcome.day3Embryos !== undefined) {
-      summaryItems.push(`${outcome.day3Embryos} day 3 embryos`)
-    }
-    
-    if (outcome.blastocysts !== undefined) {
-      summaryItems.push(`${outcome.blastocysts} blastocysts`)
-    }
-    
-    if (outcome.euploidBlastocysts !== undefined) {
-      summaryItems.push(`${outcome.euploidBlastocysts} euploid`)
-    }
-    
-    if (outcome.frozen !== undefined) {
-      summaryItems.push(`${outcome.frozen} frozen`)
-    }
-    
-    if (outcome.embryosAvailableForTransfer !== undefined) {
-      summaryItems.push(`${outcome.embryosAvailableForTransfer} available for transfer`)
+    // Handle transfer cycles differently
+    if (cycle.cycleGoal === "transfer") {
+      // Transfer Status
+      if (outcome.transferStatus) {
+        const statusText = outcome.transferStatus === "successful" ? "✓ Successful Transfer" : "✗ Transfer Failed"
+        const statusClass = outcome.transferStatus === "successful" ? "text-green-700 bg-green-100" : "text-red-700 bg-red-100"
+        summaryItems.push({ text: statusText, class: statusClass, isStatus: true })
+      }
+      
+      // Beta HCG values (moved before Live Birth)
+      if (outcome.betaHcg1 !== undefined) {
+        const dayText = outcome.betaHcg1Day ? ` (Day ${outcome.betaHcg1Day})` : ""
+        summaryItems.push({ text: `Beta HCG 1: ${outcome.betaHcg1}${dayText}`, class: "", isStatus: false })
+      }
+      
+      if (outcome.betaHcg2 !== undefined) {
+        const dayText = outcome.betaHcg2Day ? ` (Day ${outcome.betaHcg2Day})` : ""
+        summaryItems.push({ text: `Beta HCG 2: ${outcome.betaHcg2}${dayText}`, class: "", isStatus: false })
+      }
+      
+      // Live Birth (moved after Beta HCG)
+      if (outcome.liveBirth) {
+        const birthText = outcome.liveBirth === "yes" ? "🍼 Live Birth" : "No Live Birth"
+        const birthClass = outcome.liveBirth === "yes" ? "text-green-700 bg-green-100" : "text-gray-700 bg-gray-100"
+        summaryItems.push({ text: birthText, class: birthClass, isStatus: true })
+      }
+    } else {
+      // Handle retrieval cycles (existing logic)
+      if (outcome.eggsRetrieved !== undefined) {
+        summaryItems.push({ text: `${outcome.eggsRetrieved} eggs retrieved`, class: "", isStatus: false })
+      }
+      
+      if (outcome.fertilized !== undefined) {
+        summaryItems.push({ text: `${outcome.fertilized} fertilized`, class: "", isStatus: false })
+      }
+      
+      if (outcome.day3Embryos !== undefined) {
+        summaryItems.push({ text: `${outcome.day3Embryos} day 3 embryos`, class: "", isStatus: false })
+      }
+      
+      if (outcome.blastocysts !== undefined) {
+        summaryItems.push({ text: `${outcome.blastocysts} blastocysts`, class: "", isStatus: false })
+      }
+      
+      if (outcome.euploidBlastocysts !== undefined) {
+        summaryItems.push({ text: `${outcome.euploidBlastocysts} euploid`, class: "", isStatus: false })
+      }
+      
+      if (outcome.frozen !== undefined) {
+        summaryItems.push({ text: `${outcome.frozen} frozen`, class: "", isStatus: false })
+      }
+      
+      if (outcome.embryosAvailableForTransfer !== undefined) {
+        summaryItems.push({ text: `${outcome.embryosAvailableForTransfer} available for transfer`, class: "", isStatus: false })
+      }
     }
 
     return summaryItems.length > 0 ? summaryItems : null
@@ -154,13 +183,31 @@ export function CycleCard({ cycle }: CycleCardProps) {
               <div className="flex items-start gap-2">
                 <Beaker className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="text-sm font-medium text-foreground mb-1">Outcome Summary</p>
+                  <p className="text-sm font-medium text-foreground mb-1">
+                    {cycle.cycleGoal === "transfer" ? "Transfer Summary" : "Outcome Summary"}
+                  </p>
                   <div className="flex flex-wrap gap-1">
-                    {formatOutcomeSummary()?.map((item, index) => (
-                      <Badge key={index} variant="secondary" className="text-xs">
-                        {item}
-                      </Badge>
-                    ))}
+                    {formatOutcomeSummary()?.map((item, index) => {
+                      if (typeof item === "string") {
+                        // Backward compatibility for retrieval cycles
+                        return (
+                          <Badge key={index} variant="secondary" className="text-xs">
+                            {item}
+                          </Badge>
+                        )
+                      } else {
+                        // New structure for transfer cycles with custom styling
+                        return (
+                          <Badge 
+                            key={index} 
+                            variant={item.isStatus ? "default" : "secondary"} 
+                            className={`text-xs ${item.class || ""}`}
+                          >
+                            {item.text}
+                          </Badge>
+                        )
+                      }
+                    })}
                   </div>
                 </div>
               </div>
