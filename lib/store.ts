@@ -2,11 +2,12 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord } from "./types"
+import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile } from "./types"
 
 interface IVFStore {
   cycles: IVFCycle[]
   procedures: ProcedureRecord[]
+  userProfile: UserProfile | null
   addCycle: (cycle: IVFCycle) => void
   updateCycle: (id: string, cycle: Partial<IVFCycle>) => void
   deleteCycle: (id: string) => void
@@ -19,6 +20,8 @@ interface IVFStore {
   updateProcedure: (id: string, procedure: Partial<ProcedureRecord>) => void
   deleteProcedure: (id: string) => void
   getProcedureById: (id: string) => ProcedureRecord | undefined
+  setUserProfile: (profile: UserProfile) => void
+  updateUserProfile: (profile: Partial<UserProfile>) => void
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -26,6 +29,7 @@ export const useIVFStore = create<IVFStore>()(
     (set, get) => ({
       cycles: [],
       procedures: [],
+      userProfile: null,
 
       addCycle: (cycle) => {
         set((state) => ({
@@ -130,6 +134,16 @@ export const useIVFStore = create<IVFStore>()(
 
       getProcedureById: (id) => {
         return get().procedures.find((procedure) => procedure.id === id)
+      },
+
+      setUserProfile: (profile) => {
+        set({ userProfile: profile })
+      },
+
+      updateUserProfile: (updatedProfile) => {
+        set((state) => ({
+          userProfile: state.userProfile ? { ...state.userProfile, ...updatedProfile } : null
+        }))
       },
     }),
     {

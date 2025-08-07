@@ -37,6 +37,17 @@ export interface BloodworkResult {
   reference?: string
 }
 
+export interface UserProfile {
+  id: string
+  location?: string
+  dateOfBirth: string
+  ivfReasons: ("low-amh" | "dor" | "premature-ovarian-failure" | "endo" | "pcos" | "blocked-fallopian-tubes" | "secondary-infertility" | "same-sex" | "genetic-reasons" | "antiphospholipid-syndrome" | "male-factor" | "other")[]
+  ivfReasonOther?: string
+  livingChildren: number
+  childrenFromIVF?: "yes" | "no"
+  createdAt: string
+}
+
 export interface IVFCycle {
   id: string
   name: string

@@ -477,11 +477,6 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                       "Levels decreased from Beta HCG 1 to Beta HCG 2"
                     }
                   </p>
-                  {cycle.outcome.betaHcg1Day && cycle.outcome.betaHcg2Day && cycle.outcome.betaHcg2Day > cycle.outcome.betaHcg1Day && cycle.outcome.betaHcg2 > cycle.outcome.betaHcg1 && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Doubling time: {(Math.log(2) / Math.log(cycle.outcome.betaHcg2 / cycle.outcome.betaHcg1) * (cycle.outcome.betaHcg2Day - cycle.outcome.betaHcg1Day)).toFixed(1)} days
-                    </p>
-                  )}
                 </div>
               )}
 
