@@ -7,7 +7,7 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { format, parseISO, differenceInYears } from "date-fns"
-import { ArrowLeft, CalendarIcon } from "lucide-react"
+import { ArrowLeft, CalendarIcon, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -15,6 +15,17 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
 import { useIVFStore } from "@/lib/store"
 
@@ -46,7 +57,7 @@ const formSchema = z.object({
 
 export default function EditCyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { getCycleById, updateCycle } = useIVFStore()
+  const { getCycleById, updateCycle, deleteCycle } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [mounted, setMounted] = useState(false)
 
@@ -78,6 +89,11 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
     return null
   }
 
+  const handleDeleteCycle = () => {
+    deleteCycle(params.id)
+    router.push("/")
+  }
+
   if (!mounted) return null
 
   if (!cycle) {
@@ -96,8 +112,13 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
 
   function onSubmit(values: z.infer<typeof formSchema>) {
     const ageAtStart = differenceInYears(values.startDate, values.dateOfBirth)
+    const newStartDate = values.startDate
+    const originalStartDate = cycle ? parseISO(cycle.startDate) : new Date()
 
-    updateCycle(params.id, {
+    // Check if start date has changed
+    const startDateChanged = newStartDate.getTime() !== originalStartDate.getTime()
+
+    const updatedCycle = {
       name: values.name,
       startDate: values.startDate.toISOString(),
       endDate: values.endDate ? values.endDate.toISOString() : undefined,
@@ -106,7 +127,37 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
       cycleType: values.cycleType,
       cycleGoal: values.cycleGoal,
       status: values.status,
-    })
+    }
+
+    // If start date changed, also update all day dates
+    if (startDateChanged && cycle?.days && cycle.days.length > 0) {
+      console.log('Start date changed, updating day dates...')
+      console.log('Original start date:', originalStartDate)
+      console.log('New start date:', newStartDate)
+      
+      const updatedDays = cycle.days.map(day => {
+        // Calculate new date based on the cycle day number and new start date
+        const newDayDate = new Date(newStartDate)
+        newDayDate.setDate(newStartDate.getDate() + (day.cycleDay - 1))
+        
+        console.log(`Day ${day.cycleDay}: ${day.date} -> ${newDayDate.toISOString()}`)
+        
+        return {
+          ...day,
+          date: newDayDate.toISOString()
+        }
+      })
+
+      console.log('Updating cycle with new days:', updatedDays)
+      
+      updateCycle(params.id, {
+        ...updatedCycle,
+        days: updatedDays
+      })
+    } else {
+      console.log('No start date change or no days to update')
+      updateCycle(params.id, updatedCycle)
+    }
 
     router.push(`/cycles/${params.id}`)
   }
@@ -201,10 +252,18 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <Calendar 
+                          mode="single" 
+                          selected={field.value} 
+                          onSelect={field.onChange} 
+                          initialFocus 
+                          captionLayout="dropdown"
+                          fromYear={2020}
+                          toYear={new Date().getFullYear() + 1}
+                        />
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>The first day of your IVF cycle</FormDescription>
+                    <FormDescription>The first day of your menstrual cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -229,7 +288,15 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        <Calendar 
+                          mode="single" 
+                          selected={field.value} 
+                          onSelect={field.onChange} 
+                          initialFocus 
+                          captionLayout="dropdown"
+                          fromYear={2020}
+                          toYear={new Date().getFullYear() + 1}
+                        />
                       </PopoverContent>
                     </Popover>
                     <FormDescription>The last day of your IVF cycle (optional)</FormDescription>
@@ -313,9 +380,35 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
               />
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" type="button" onClick={() => router.push(`/cycles/${params.id}`)}>
-                Cancel
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" type="button" onClick={() => router.push(`/cycles/${params.id}`)}>
+                  Cancel
+                </Button>
+                
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="outline" type="button" className="text-red-600 hover:text-red-700 hover:bg-red-50 border-red-200">
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Cycle
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Delete IVF Cycle</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Are you sure you want to delete "{cycle.name}"? This action cannot be undone and will permanently remove the entire cycle including all tracked days, medications, clinic visits, measurements, bloodwork results, and cycle outcomes.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancel</AlertDialogCancel>
+                      <AlertDialogAction onClick={handleDeleteCycle} className="bg-red-600 hover:bg-red-700">
+                        Delete Cycle
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
+              </div>
+              
               <Button type="submit">Save Changes</Button>
             </CardFooter>
           </form>

@@ -30,14 +30,23 @@ const medicationSchema = z.object({
 })
 
 const clinicVisitSchema = z.object({
-  type: z.enum(["baseline", "monitoring", "consult", "retrieval", "transfer", "other"]),
+  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "other"]),
   notes: z.string().optional(),
 })
 
 const follicleSizesSchema = z.object({
   left: z.array(z.number()).default([]),
   right: z.array(z.number()).default([]),
+  liningCheck: z.boolean().default(false),
   liningThickness: z.number().optional(),
+}).refine((data) => {
+  if (data.liningCheck && !data.liningThickness) {
+    return false
+  }
+  return true
+}, {
+  message: "Endometrial lining measurement is required when lining check is selected",
+  path: ["liningThickness"]
 })
 
 const bloodworkSchema = z.array(
@@ -86,8 +95,14 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
       hasFollicleSizes: false,
       hasBloodwork: false,
       bloodwork: [],
+      follicleSizes: {
+        liningCheck: false,
+        liningThickness: undefined,
+      },
     },
   })
+
+  const watchLiningCheck = form.watch("follicleSizes.liningCheck")
 
   if (!cycle) {
     return (
@@ -145,7 +160,9 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
       follicleData = {
         left,
         right,
-        liningThickness: form.getValues("follicleSizes.liningThickness"),
+        liningThickness: form.getValues("follicleSizes.liningCheck") 
+          ? form.getValues("follicleSizes.liningThickness")
+          : undefined,
       }
     }
 
@@ -373,7 +390,6 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
                                 <SelectContent>
                                   <SelectItem value="baseline">Baseline</SelectItem>
                                   <SelectItem value="monitoring">Monitoring</SelectItem>
-                                  <SelectItem value="consult">Consultation</SelectItem>
                                   <SelectItem value="retrieval">Egg Retrieval</SelectItem>
                                   <SelectItem value="transfer">Embryo Transfer</SelectItem>
                                   <SelectItem value="other">Other</SelectItem>
@@ -445,7 +461,38 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
                             <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
                           </div>
                         </div>
+                      </div>
+                    )}
+                  </div>
 
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="follicleSizes.liningCheck"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>
+                                Lining Check
+                              </FormLabel>
+                              <FormDescription>
+                                Check if endometrial lining was measured
+                              </FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {watchLiningCheck && (
+                      <div className="space-y-4 border rounded-md p-4">
                         <FormField
                           control={form.control}
                           name="follicleSizes.liningThickness"

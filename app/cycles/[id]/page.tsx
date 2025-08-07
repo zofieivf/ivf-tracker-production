@@ -4,11 +4,23 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Calendar, Edit, Plus, User, Target } from "lucide-react"
+import { ArrowLeft, Calendar, Edit, Plus, User, Target, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Checkbox } from "@/components/ui/checkbox"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useIVFStore } from "@/lib/store"
 import { DayCard } from "@/components/day-card"
 import { CycleOutcomeCard } from "@/components/cycle-outcome-card"
@@ -16,14 +28,45 @@ import { CycleChartsView } from "@/components/cycle-charts-view"
 
 export default function CyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { getCycleById } = useIVFStore()
+  const { getCycleById, cycles, deleteDay } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [mounted, setMounted] = useState(false)
+  const [isDeleteMode, setIsDeleteMode] = useState(false)
+  const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     setMounted(true)
     setCycle(getCycleById(params.id))
-  }, [params.id, getCycleById])
+  }, [params.id, getCycleById, cycles]) // Add cycles to dependency array
+
+  const handleToggleDeleteMode = () => {
+    setIsDeleteMode(!isDeleteMode)
+    setSelectedDays(new Set()) // Clear selection when toggling
+  }
+
+  const handleDaySelection = (dayId: string, isSelected: boolean) => {
+    const newSelection = new Set(selectedDays)
+    if (isSelected) {
+      newSelection.add(dayId)
+    } else {
+      newSelection.delete(dayId)
+    }
+    setSelectedDays(newSelection)
+  }
+
+  const handleBatchDelete = () => {
+    if (!cycle) return
+    
+    selectedDays.forEach(dayId => {
+      // Skip placeholder days - they don't exist in the actual data
+      if (!dayId.startsWith('placeholder-')) {
+        deleteDay(cycle.id, dayId)
+      }
+    })
+    
+    setIsDeleteMode(false)
+    setSelectedDays(new Set())
+  }
 
   if (!mounted) return null
 
@@ -162,25 +205,66 @@ export default function CyclePage({ params }: { params: { id: string } }) {
         <Tabs defaultValue="days" className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="days">Daily Tracking</TabsTrigger>
-            <TabsTrigger value="charts">Charts & Analysis</TabsTrigger>
             <TabsTrigger value="outcome">Cycle Outcome</TabsTrigger>
+            <TabsTrigger value="charts">Charts & Analysis</TabsTrigger>
           </TabsList>
 
           <TabsContent value="days" className="space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Daily Tracking</h2>
-              <Button asChild>
-                <Link href={`/cycles/${cycle.id}/days/new?day=${cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1}&date=${(() => {
-                  const nextDay = cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1;
-                  const startDate = new Date(cycle.startDate);
-                  const dayDate = new Date(startDate);
-                  dayDate.setDate(startDate.getDate() + (nextDay - 1));
-                  return dayDate.toISOString();
-                })()}`}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Day
-                </Link>
-              </Button>
+              <div className="flex gap-2">
+                {isDeleteMode ? (
+                  <>
+                    <Button variant="outline" onClick={handleToggleDeleteMode}>
+                      Cancel
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          disabled={selectedDays.size === 0}
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete Selected ({selectedDays.size})
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Delete Selected Days</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Are you sure you want to delete {selectedDays.size} selected day{selectedDays.size !== 1 ? 's' : ''}? This action cannot be undone and will permanently remove all data for these days including medications, clinic visits, measurements, and notes.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancel</AlertDialogCancel>
+                          <AlertDialogAction onClick={handleBatchDelete} className="bg-red-600 hover:bg-red-700">
+                            Delete Days
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </>
+                ) : (
+                  <>
+                    <Button variant="outline" onClick={handleToggleDeleteMode}>
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Delete Days
+                    </Button>
+                    <Button asChild>
+                      <Link href={`/cycles/${cycle.id}/days/new?day=${cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1}&date=${(() => {
+                        const nextDay = cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1;
+                        const startDate = new Date(cycle.startDate);
+                        const dayDate = new Date(startDate);
+                        dayDate.setDate(startDate.getDate() + (nextDay - 1));
+                        return dayDate.toISOString();
+                      })()}`}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Day
+                      </Link>
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
 
             {cycle.days && cycle.days.length > 0 ? (
@@ -214,12 +298,24 @@ export default function CyclePage({ params }: { params: { id: string } }) {
                   }
 
                   return allDays.map(({ type, day }) => (
-                    <DayCard 
-                      key={day.id} 
-                      day={day} 
-                      cycleId={cycle.id} 
-                      isPlaceholder={type === 'placeholder'} 
-                    />
+                    <div key={day.id} className={`relative ${isDeleteMode ? 'ring-2 ring-muted rounded-lg p-1' : ''}`}>
+                      {isDeleteMode && (
+                        <div className="absolute top-3 left-3 z-10">
+                          <Checkbox
+                            checked={selectedDays.has(day.id)}
+                            onCheckedChange={(checked) => handleDaySelection(day.id, !!checked)}
+                            className="bg-white border-2 shadow-sm"
+                          />
+                        </div>
+                      )}
+                      <div className={isDeleteMode ? 'ml-8' : ''}>
+                        <DayCard 
+                          day={day} 
+                          cycleId={cycle.id} 
+                          isPlaceholder={type === 'placeholder'}
+                        />
+                      </div>
+                    </div>
                   ))
                 })()}
               </div>

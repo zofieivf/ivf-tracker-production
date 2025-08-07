@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { Calendar, User, Target } from "lucide-react"
+import { Calendar, User, Target, Beaker, Eye, Edit } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -54,6 +54,43 @@ export function CycleCard({ cycle }: CycleCardProps) {
     }
   }
 
+  const formatOutcomeSummary = () => {
+    const outcome = cycle.outcome
+    if (!outcome) return null
+
+    const summaryItems = []
+    
+    if (outcome.eggsRetrieved !== undefined) {
+      summaryItems.push(`${outcome.eggsRetrieved} eggs retrieved`)
+    }
+    
+    if (outcome.fertilized !== undefined) {
+      summaryItems.push(`${outcome.fertilized} fertilized`)
+    }
+    
+    if (outcome.day3Embryos !== undefined) {
+      summaryItems.push(`${outcome.day3Embryos} day 3 embryos`)
+    }
+    
+    if (outcome.blastocysts !== undefined) {
+      summaryItems.push(`${outcome.blastocysts} blastocysts`)
+    }
+    
+    if (outcome.euploidBlastocysts !== undefined) {
+      summaryItems.push(`${outcome.euploidBlastocysts} euploid`)
+    }
+    
+    if (outcome.frozen !== undefined) {
+      summaryItems.push(`${outcome.frozen} frozen`)
+    }
+    
+    if (outcome.embryosAvailableForTransfer !== undefined) {
+      summaryItems.push(`${outcome.embryosAvailableForTransfer} available for transfer`)
+    }
+
+    return summaryItems.length > 0 ? summaryItems : null
+  }
+
   return (
     <Card className="hover:shadow-md transition-shadow w-full">
       <CardHeader>
@@ -77,20 +114,52 @@ export function CycleCard({ cycle }: CycleCardProps) {
               </div>
             </CardDescription>
           </div>
-          <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+          <div className="flex items-center gap-2">
+            <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+            <Badge variant="outline" className="text-xs">
+              {getCycleGoalDisplay(cycle.cycleGoal)}
+            </Badge>
+            <div className="flex gap-1">
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/cycles/${cycle.id}`}>
+                  <Eye className="h-4 w-4" />
+                </Link>
+              </Button>
+              <Button asChild variant="ghost" size="sm">
+                <Link href={`/cycles/${cycle.id}/edit`}>
+                  <Edit className="h-4 w-4" />
+                </Link>
+              </Button>
+            </div>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
+        <div className="space-y-3">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
             <span>{getCycleTypeDisplay(cycle.cycleType)} Protocol</span>
             <span>
               {cycle.days && cycle.days.length > 0 ? `${cycle.days.length} days tracked` : "No days tracked"}
             </span>
           </div>
-          <Button asChild>
-            <Link href={`/cycles/${cycle.id}`}>View Details</Link>
-          </Button>
+          
+          {formatOutcomeSummary() && (
+            <div className="border-t pt-3">
+              <div className="flex items-start gap-2">
+                <Beaker className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <div>
+                  <p className="text-sm font-medium text-foreground mb-1">Outcome Summary</p>
+                  <div className="flex flex-wrap gap-1">
+                    {formatOutcomeSummary()?.map((item, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </CardContent>
     </Card>

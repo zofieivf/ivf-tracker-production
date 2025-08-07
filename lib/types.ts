@@ -70,6 +70,8 @@ export interface CycleOutcome {
   fertilized?: number
   day3Embryos?: number
   day3EmbryoGrades?: EmbryoGrade[]
+  blastocysts?: number
+  euploidBlastocysts?: number
   frozen?: number
   embryosAvailableForTransfer?: number
 }

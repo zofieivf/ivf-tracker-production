@@ -41,6 +41,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
     )
   }
 
+
   return (
     <div className="container max-w-4xl py-10">
       <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
@@ -141,7 +142,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
           </Card>
         )}
 
-        {day.follicleSizes && (
+        {day.follicleSizes && (day.follicleSizes.left.length > 0 || day.follicleSizes.right.length > 0) && (
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -170,13 +171,23 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
                     )}
                   </div>
                 </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-                {day.follicleSizes.liningThickness && (
-                  <div>
-                    <p className="text-sm font-medium">Endometrial Lining</p>
-                    <p>{day.follicleSizes.liningThickness} mm</p>
-                  </div>
-                )}
+        {day.follicleSizes && day.follicleSizes.liningThickness && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Droplet className="h-5 w-5 text-primary" />
+                <CardTitle>Lining Check</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div>
+                <p className="text-sm font-medium">Endometrial Lining</p>
+                <p>{day.follicleSizes.liningThickness} mm</p>
               </div>
             </CardContent>
           </Card>

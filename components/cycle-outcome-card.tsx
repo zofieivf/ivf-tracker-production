@@ -34,6 +34,14 @@ const formSchema = z.object({
     .string()
     .optional()
     .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  blastocysts: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+  euploidBlastocysts: z
+    .string()
+    .optional()
+    .transform((val) => (val ? Number.parseInt(val) : undefined)),
   frozen: z
     .string() 
     .optional()
@@ -62,6 +70,8 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
       fertilizationMethod: cycle.outcome?.fertilizationMethod || undefined,
       fertilized: cycle.outcome?.fertilized?.toString() || "",
       day3Embryos: cycle.outcome?.day3Embryos?.toString() || "",
+      blastocysts: cycle.outcome?.blastocysts?.toString() || "",
+      euploidBlastocysts: cycle.outcome?.euploidBlastocysts?.toString() || "",
       frozen: cycle.outcome?.frozen?.toString() || "",
       embryosAvailableForTransfer: cycle.outcome?.embryosAvailableForTransfer?.toString() || "",
     },
@@ -115,9 +125,14 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   if (!isEditing && cycle.outcome) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle>Cycle Outcome</CardTitle>
-          <CardDescription>Results and outcomes from your IVF cycle</CardDescription>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <div>
+            <CardTitle>Cycle Outcome</CardTitle>
+            <CardDescription>Results and outcomes from your IVF cycle</CardDescription>
+          </div>
+          <Button variant="outline" onClick={() => setIsEditing(true)}>
+            Edit Outcomes
+          </Button>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -153,6 +168,20 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               <div>
                 <p className="text-sm font-medium">Day 3 Embryos</p>
                 <p className="text-2xl font-bold">{cycle.outcome.day3Embryos}</p>
+              </div>
+            )}
+
+            {cycle.outcome.blastocysts !== undefined && (
+              <div>
+                <p className="text-sm font-medium">Day 5/6/7 Blastocysts</p>
+                <p className="text-2xl font-bold">{cycle.outcome.blastocysts}</p>
+              </div>
+            )}
+
+            {cycle.outcome.euploidBlastocysts !== undefined && (
+              <div>
+                <p className="text-sm font-medium">Euploid Blastocysts</p>
+                <p className="text-2xl font-bold">{cycle.outcome.euploidBlastocysts}</p>
               </div>
             )}
 
@@ -211,11 +240,6 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
           )}
 
         </CardContent>
-        <CardFooter>
-          <Button variant="outline" onClick={() => setIsEditing(true)}>
-            Edit Outcomes
-          </Button>
-        </CardFooter>
       </Card>
     )
   }
@@ -300,6 +324,63 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Day 3 Embryos</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+
+              <FormField
+                control={form.control}
+                name="blastocysts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Day 5/6/7 Blastocysts</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="frozen"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Frozen</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="euploidBlastocysts"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Number of Euploid Blastocysts</FormLabel>
+                    <FormControl>
+                      <Input type="number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="embryosAvailableForTransfer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Number of Embryos Available for Transfer</FormLabel>
                     <FormControl>
                       <Input type="number" {...field} />
                     </FormControl>
@@ -409,35 +490,6 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   </div>
                 </div>
               )}
-
-
-              <FormField
-                control={form.control}
-                name="frozen"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Frozen</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="embryosAvailableForTransfer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Number of Embryos Available for Transfer</FormLabel>
-                    <FormControl>
-                      <Input type="number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </div>
           </CardContent>
           <CardFooter className="flex justify-between">

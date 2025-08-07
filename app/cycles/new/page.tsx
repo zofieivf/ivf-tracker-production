@@ -210,10 +210,18 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus captionLayout="dropdown" />
+                        <Calendar 
+                          mode="single" 
+                          selected={field.value} 
+                          onSelect={field.onChange} 
+                          initialFocus 
+                          captionLayout="dropdown"
+                          fromYear={2020}
+                          toYear={new Date().getFullYear() + 1}
+                        />
                       </PopoverContent>
                     </Popover>
-                    <FormDescription>The first day of your IVF cycle</FormDescription>
+                    <FormDescription>The first day of your menstrual cycle</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -238,7 +246,15 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus captionLayout="dropdown" />
+                        <Calendar 
+                          mode="single" 
+                          selected={field.value} 
+                          onSelect={field.onChange} 
+                          initialFocus 
+                          captionLayout="dropdown"
+                          fromYear={2020}
+                          toYear={new Date().getFullYear() + 1}
+                        />
                       </PopoverContent>
                     </Popover>
                     <FormDescription>The last day of your IVF cycle (optional)</FormDescription>

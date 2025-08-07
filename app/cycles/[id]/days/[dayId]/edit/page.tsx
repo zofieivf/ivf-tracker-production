@@ -29,6 +29,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
   const [follicleSizes, setFollicleSizes] = useState<FollicleMeasurement | undefined>()
   const [bloodwork, setBloodwork] = useState<BloodworkResult[]>([])
   const [notes, setNotes] = useState("")
+  const [liningCheck, setLiningCheck] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -43,6 +44,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
       setFollicleSizes(currentDay.follicleSizes)
       setBloodwork(currentDay.bloodwork || [])
       setNotes(currentDay.notes || "")
+      setLiningCheck(!!currentDay.follicleSizes?.liningThickness)
     }
   }, [params.id, params.dayId, getCycleById])
 
@@ -310,7 +312,6 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                     <SelectContent>
                       <SelectItem value="baseline">Baseline</SelectItem>
                       <SelectItem value="monitoring">Monitoring</SelectItem>
-                      <SelectItem value="consult">Consult</SelectItem>
                       <SelectItem value="retrieval">Retrieval</SelectItem>
                       <SelectItem value="transfer">Transfer</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
@@ -355,16 +356,46 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                 placeholder="e.g., 10, 13, 15"
               />
             </div>
-            <div>
-              <Label htmlFor="lining-thickness">Endometrial Lining Thickness (mm)</Label>
-              <Input
-                id="lining-thickness"
-                type="number"
-                value={follicleSizes?.liningThickness || ""}
-                onChange={(e) => updateLiningThickness(e.target.value)}
-                placeholder="e.g., 8.5"
+          </CardContent>
+        </Card>
+
+        {/* Lining Check */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle>Lining Check</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="lining-check"
+                checked={liningCheck}
+                onCheckedChange={(checked) => {
+                  setLiningCheck(!!checked)
+                  if (!checked) {
+                    // Clear lining thickness when unchecked
+                    setFollicleSizes((prev) => ({
+                      left: prev?.left || [],
+                      right: prev?.right || [],
+                      liningThickness: undefined,
+                    }))
+                  }
+                }}
               />
+              <Label htmlFor="lining-check">Lining was measured today</Label>
             </div>
+            {liningCheck && (
+              <div>
+                <Label htmlFor="lining-thickness">Endometrial Lining (mm)</Label>
+                <Input
+                  id="lining-thickness"
+                  type="number"
+                  step="0.1"
+                  value={follicleSizes?.liningThickness || ""}
+                  onChange={(e) => updateLiningThickness(e.target.value)}
+                  placeholder="e.g., 8.5"
+                />
+              </div>
+            )}
           </CardContent>
         </Card>
 
