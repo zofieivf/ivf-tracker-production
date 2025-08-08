@@ -71,7 +71,7 @@ export default function Home() {
             {combinedItems.map((item, index) => (
               <div key={`${item.type}-${item.item.id}`}>
                 {item.type === 'cycle' ? (
-                  <CycleCard cycle={item.item} />
+                  <CycleCard cycle={item.item} allCycles={cycles} />
                 ) : (
                   <ProcedureCard procedure={item.item} />
                 )}

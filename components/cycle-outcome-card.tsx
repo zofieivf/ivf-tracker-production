@@ -87,8 +87,12 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   
   const isTransferCycle = cycle.cycleGoal === "transfer"
   
-  // Get retrieval cycle name for display
-  const retrievalCycle = cycles.find(c => c.id === cycle.retrievalCycleId)
+  // Get retrieval cycles for embryos (for transfer cycles)
+  const getRetrievalCyclesForEmbryos = () => {
+    if (!cycle.embryos) return []
+    const retrievalCycleIds = [...new Set(cycle.embryos.map(e => e.retrievalCycleId).filter(Boolean))]
+    return retrievalCycleIds.map(id => cycles.find(c => c.id === id)).filter(Boolean)
+  }
 
   // Use different forms based on cycle type
   const retrievalForm = useForm<z.infer<typeof retrievalFormSchema>>({
@@ -197,46 +201,57 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
         </CardHeader>
         <CardContent>
           {/* Embryo Information - Only for transfer cycles */}
-          {isTransferCycle && (
+          {isTransferCycle && cycle.embryos && cycle.embryos.length > 0 && (
             <div className="mb-6 p-4 bg-muted/50 rounded-lg">
               <h4 className="text-sm font-medium mb-3">Embryo Information</h4>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
-                {cycle.embryoDetails && (
-                  <div>
-                    <p className="font-medium">Embryo Stage</p>
-                    <p className="capitalize">
-                      {cycle.embryoDetails.replace("-", " ").replace("day", "Day ")}
-                    </p>
-                  </div>
-                )}
-                
-                {cycle.embryoGrade && (
-                  <div>
-                    <p className="font-medium">Grade</p>
-                    <p>{cycle.embryoGrade}</p>
-                  </div>
-                )}
-                
-                {cycle.pgtATested && (
-                  <div>
-                    <p className="font-medium">PGT-A Tested</p>
-                    <p className="capitalize">{cycle.pgtATested}</p>
-                  </div>
-                )}
-                
-                {cycle.embryoSex && (
-                  <div>
-                    <p className="font-medium">Embryo Sex</p>
-                    <p>{cycle.embryoSex === "M" ? "Male" : "Female"} ({cycle.embryoSex})</p>
-                  </div>
-                )}
-                
-                {retrievalCycle && (
-                  <div className="md:col-span-2">
-                    <p className="font-medium">From Retrieval Cycle</p>
-                    <p>{retrievalCycle.name}</p>
-                  </div>
-                )}
+              <div className="space-y-4">
+                {cycle.embryos.map((embryo, index) => {
+                  const retrievalCycle = cycles.find(c => c.id === embryo.retrievalCycleId)
+                  return (
+                    <div key={embryo.id} className="border rounded-lg p-3">
+                      <h5 className="text-sm font-medium mb-2">
+                        Embryo {index + 1} 
+{cycle.embryos && cycle.embryos.length > 1 && ` of ${cycle.embryos.length}`}
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
+                        <div>
+                          <p className="font-medium">Embryo Stage</p>
+                          <p className="capitalize">
+                            {embryo.embryoDetails.replace("-", " ").replace("day", "Day ")}
+                          </p>
+                        </div>
+                        
+                        {embryo.embryoGrade && (
+                          <div>
+                            <p className="font-medium">Grade</p>
+                            <p>{embryo.embryoGrade}</p>
+                          </div>
+                        )}
+                        
+                        {embryo.pgtATested && (
+                          <div>
+                            <p className="font-medium">PGT-A Tested</p>
+                            <p className="capitalize">{embryo.pgtATested}</p>
+                          </div>
+                        )}
+                        
+                        {embryo.embryoSex && (
+                          <div>
+                            <p className="font-medium">Embryo Sex</p>
+                            <p>{embryo.embryoSex === "M" ? "Male" : "Female"} ({embryo.embryoSex})</p>
+                          </div>
+                        )}
+                        
+                        {retrievalCycle && (
+                          <div className="md:col-span-2">
+                            <p className="font-medium">From Retrieval Cycle</p>
+                            <p>{retrievalCycle.name}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -412,7 +427,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                 {/* Beta HCG 1 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="betaHcg1Day"
                     render={({ field }) => (
                       <FormItem>
@@ -437,7 +452,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="betaHcg1"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
@@ -454,7 +469,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                 {/* Beta HCG 2 */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="betaHcg2Day"
                     render={({ field }) => (
                       <FormItem>
@@ -479,7 +494,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   />
                   
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="betaHcg2"
                     render={({ field }) => (
                       <FormItem className="md:col-span-2">
@@ -496,7 +511,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                 {/* Transfer Status and Live Birth */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="transferStatus"
                     render={({ field }) => (
                       <FormItem>
@@ -518,7 +533,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   />
 
                   <FormField
-                    control={form.control}
+                    control={transferForm.control}
                     name="liveBirth"
                     render={({ field }) => (
                       <FormItem>
@@ -544,7 +559,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               // Retrieval cycle form fields
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <FormField
-                  control={form.control}
+                  control={retrievalForm.control}
                   name="eggsRetrieved"
                   render={({ field }) => (
                     <FormItem>
@@ -558,7 +573,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                 />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="matureEggs"
                 render={({ field }) => (
                   <FormItem>
@@ -572,7 +587,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="fertilizationMethod"
                 render={({ field }) => (
                   <FormItem>
@@ -594,7 +609,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="fertilized"
                 render={({ field }) => (
                   <FormItem>
@@ -608,7 +623,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="day3Embryos"
                 render={({ field }) => (
                   <FormItem>
@@ -623,7 +638,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
 
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="blastocysts"
                 render={({ field }) => (
                   <FormItem>
@@ -637,7 +652,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="frozen"
                 render={({ field }) => (
                   <FormItem>
@@ -651,7 +666,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="euploidBlastocysts"
                 render={({ field }) => (
                   <FormItem>
@@ -665,7 +680,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
               />
 
               <FormField
-                control={form.control}
+                control={retrievalForm.control}
                 name="embryosAvailableForTransfer"
                 render={({ field }) => (
                   <FormItem>

@@ -8,9 +8,10 @@ import type { IVFCycle } from "@/lib/types"
 
 interface CycleCardProps {
   cycle: IVFCycle
+  allCycles?: IVFCycle[]
 }
 
-export function CycleCard({ cycle }: CycleCardProps) {
+export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
@@ -88,24 +89,87 @@ export function CycleCard({ cycle }: CycleCardProps) {
     
     // Handle transfer cycles differently
     if (cycle.cycleGoal === "transfer") {
-      // Embryo Information (add before transfer status)
-      if (cycle.embryoDetails) {
-        const stageText = cycle.embryoDetails.replace("-", " ").replace("day", "Day ")
-        summaryItems.push({ text: stageText, class: "text-blue-700 bg-blue-100", isStatus: true })
+      // Number of embryos
+      if (cycle.numberOfEmbryos) {
+        const embryoText = cycle.numberOfEmbryos === 1 ? "1 embryo" : `${cycle.numberOfEmbryos} embryos`
+        summaryItems.push({ text: embryoText, class: "text-blue-700 bg-blue-100", isStatus: true })
       }
       
-      if (cycle.embryoGrade) {
-        summaryItems.push({ text: `Grade: ${cycle.embryoGrade}`, class: "", isStatus: false })
+      if (cycle.donorEggs) {
+        const eggText = cycle.donorEggs === "donor" ? "Donor Eggs" : "Own Eggs"
+        summaryItems.push({ text: eggText, class: "", isStatus: false })
       }
       
-      if (cycle.pgtATested) {
-        const pgtText = cycle.pgtATested === "not-tested" ? "PGT-A: Not Tested" : `PGT-A: ${cycle.pgtATested}`
-        summaryItems.push({ text: pgtText, class: "", isStatus: false })
+      // Embryo Information - show summary of all embryos
+      if (cycle.embryos && cycle.embryos.length > 0) {
+        // Group by stage
+        const stageGroups = cycle.embryos.reduce((groups, embryo) => {
+          const stage = embryo.embryoDetails.replace("-", " ").replace("day", "Day ")
+          groups[stage] = (groups[stage] || 0) + 1
+          return groups
+        }, {} as Record<string, number>)
+        
+        Object.entries(stageGroups).forEach(([stage, count]) => {
+          const text = count === 1 ? stage : `${count}x ${stage}`
+          summaryItems.push({ text, class: "", isStatus: false })
+        })
+        
+        // Show grades if available (first few)
+        const gradesWithCounts = cycle.embryos.reduce((grades, embryo) => {
+          if (embryo.embryoGrade) {
+            grades[embryo.embryoGrade] = (grades[embryo.embryoGrade] || 0) + 1
+          }
+          return grades
+        }, {} as Record<string, number>)
+        
+        Object.entries(gradesWithCounts).slice(0, 3).forEach(([grade, count]) => {
+          const text = count === 1 ? `Grade: ${grade}` : `${count}x Grade: ${grade}`
+          summaryItems.push({ text, class: "", isStatus: false })
+        })
+        
+        // Show PGT-A summary
+        const pgtGroups = cycle.embryos.reduce((groups, embryo) => {
+          if (embryo.pgtATested && embryo.pgtATested !== "not-tested") {
+            groups[embryo.pgtATested] = (groups[embryo.pgtATested] || 0) + 1
+          }
+          return groups
+        }, {} as Record<string, number>)
+        
+        Object.entries(pgtGroups).forEach(([pgt, count]) => {
+          const text = count === 1 ? `PGT-A: ${pgt}` : `${count}x PGT-A: ${pgt}`
+          summaryItems.push({ text, class: "", isStatus: false })
+        })
+        
+        // Show sex distribution
+        const sexGroups = cycle.embryos.reduce((groups, embryo) => {
+          if (embryo.embryoSex) {
+            const sexText = embryo.embryoSex === "M" ? "Male" : "Female"
+            groups[sexText] = (groups[sexText] || 0) + 1
+          }
+          return groups
+        }, {} as Record<string, number>)
+        
+        Object.entries(sexGroups).forEach(([sex, count]) => {
+          const text = count === 1 ? sex : `${count}x ${sex}`
+          summaryItems.push({ text, class: "", isStatus: false })
+        })
       }
       
-      if (cycle.embryoSex) {
-        const sexText = cycle.embryoSex === "M" ? "Male" : "Female"
-        summaryItems.push({ text: sexText, class: "", isStatus: false })
+      // Show source retrieval cycles with names
+      if (cycle.embryos && cycle.embryos.length > 0) {
+        const retrievalCycleIds = [...new Set(cycle.embryos.map(e => e.retrievalCycleId).filter(Boolean))]
+        if (retrievalCycleIds.length > 0) {
+          const retrievalCycleNames = retrievalCycleIds.map(id => {
+            const retrievalCycle = allCycles.find(c => c.id === id)
+            return retrievalCycle ? retrievalCycle.name : `Cycle ${id.slice(-4)}`
+          })
+          
+          if (retrievalCycleIds.length === 1) {
+            summaryItems.push({ text: `From ${retrievalCycleNames[0]}`, class: "text-muted-foreground", isStatus: false })
+          } else {
+            summaryItems.push({ text: `From ${retrievalCycleNames.join(", ")}`, class: "text-muted-foreground", isStatus: false })
+          }
+        }
       }
       
       // Only show outcome-dependent items if outcome exists

@@ -37,6 +37,15 @@ export interface BloodworkResult {
   reference?: string
 }
 
+export interface TransferEmbryo {
+  id: string
+  embryoDetails: "day3-embryo" | "day5-blastocyst" | "day6-blastocyst" | "day7-blastocyst"
+  embryoGrade?: string
+  pgtATested?: "euploid" | "mosaic" | "not-tested"
+  embryoSex?: "M" | "F"
+  retrievalCycleId?: string
+}
+
 export interface UserProfile {
   id: string
   location?: string
@@ -45,6 +54,7 @@ export interface UserProfile {
   ivfReasonOther?: string
   livingChildren: number
   childrenFromIVF?: "yes" | "no"
+  numberOfIVFChildren?: number
   createdAt: string
 }
 
@@ -57,11 +67,9 @@ export interface IVFCycle {
   ageAtStart?: number
   cycleType: "antagonist" | "long-lupron" | "microdose-flare" | "mini-ivf" | "other" | "fresh" | "frozen-medicated" | "frozen-modified-natural" | "frozen-natural"
   cycleGoal: "retrieval" | "transfer"
-  embryoDetails?: "day3-embryo" | "day5-blastocyst" | "day6-blastocyst" | "day7-blastocyst"
-  embryoGrade?: string
-  pgtATested?: "euploid" | "mosaic" | "not-tested"
-  embryoSex?: "M" | "F"
-  retrievalCycleId?: string
+  donorEggs?: "donor" | "own"
+  numberOfEmbryos?: number
+  embryos?: TransferEmbryo[]
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]
   outcome?: CycleOutcome
