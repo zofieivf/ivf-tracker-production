@@ -100,58 +100,38 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
         summaryItems.push({ text: eggText, class: "", isStatus: false })
       }
       
-      // Embryo Information - show summary of all embryos
+      // Embryo Information - show individual embryo summaries in sequence
       if (cycle.embryos && cycle.embryos.length > 0) {
-        // Group by stage
-        const stageGroups = cycle.embryos.reduce((groups, embryo) => {
+        cycle.embryos.forEach((embryo, index) => {
+          const embryoDetails = []
+          
+          // Stage
           const stage = embryo.embryoDetails.replace("-", " ").replace("day", "Day ")
-          groups[stage] = (groups[stage] || 0) + 1
-          return groups
-        }, {} as Record<string, number>)
-        
-        Object.entries(stageGroups).forEach(([stage, count]) => {
-          const text = count === 1 ? stage : `${count}x ${stage}`
-          summaryItems.push({ text, class: "", isStatus: false })
-        })
-        
-        // Show grades if available (first few)
-        const gradesWithCounts = cycle.embryos.reduce((grades, embryo) => {
+          embryoDetails.push(stage)
+          
+          // Grade
           if (embryo.embryoGrade) {
-            grades[embryo.embryoGrade] = (grades[embryo.embryoGrade] || 0) + 1
+            embryoDetails.push(`Grade ${embryo.embryoGrade}`)
           }
-          return grades
-        }, {} as Record<string, number>)
-        
-        Object.entries(gradesWithCounts).slice(0, 3).forEach(([grade, count]) => {
-          const text = count === 1 ? `Grade: ${grade}` : `${count}x Grade: ${grade}`
-          summaryItems.push({ text, class: "", isStatus: false })
-        })
-        
-        // Show PGT-A summary
-        const pgtGroups = cycle.embryos.reduce((groups, embryo) => {
-          if (embryo.pgtATested && embryo.pgtATested !== "not-tested") {
-            groups[embryo.pgtATested] = (groups[embryo.pgtATested] || 0) + 1
-          }
-          return groups
-        }, {} as Record<string, number>)
-        
-        Object.entries(pgtGroups).forEach(([pgt, count]) => {
-          const text = count === 1 ? `PGT-A: ${pgt}` : `${count}x PGT-A: ${pgt}`
-          summaryItems.push({ text, class: "", isStatus: false })
-        })
-        
-        // Show sex distribution
-        const sexGroups = cycle.embryos.reduce((groups, embryo) => {
+          
+          // Sex
           if (embryo.embryoSex) {
             const sexText = embryo.embryoSex === "M" ? "Male" : "Female"
-            groups[sexText] = (groups[sexText] || 0) + 1
+            embryoDetails.push(sexText)
           }
-          return groups
-        }, {} as Record<string, number>)
-        
-        Object.entries(sexGroups).forEach(([sex, count]) => {
-          const text = count === 1 ? sex : `${count}x ${sex}`
-          summaryItems.push({ text, class: "", isStatus: false })
+          
+          // PGT-A
+          if (embryo.pgtATested && embryo.pgtATested !== "not-tested") {
+            embryoDetails.push(`PGT-A ${embryo.pgtATested}`)
+          }
+          
+          const embryoSummary = embryoDetails.join(", ")
+          const embryoLabel = cycle.embryos && cycle.embryos.length > 1 ? `Embryo ${index + 1}: ` : ""
+          summaryItems.push({ 
+            text: `${embryoLabel}${embryoSummary}`, 
+            class: "", 
+            isStatus: false 
+          })
         })
       }
       
@@ -161,7 +141,7 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
         if (retrievalCycleIds.length > 0) {
           const retrievalCycleNames = retrievalCycleIds.map(id => {
             const retrievalCycle = allCycles.find(c => c.id === id)
-            return retrievalCycle ? retrievalCycle.name : `Cycle ${id.slice(-4)}`
+            return retrievalCycle ? retrievalCycle.name : `Cycle ${id?.slice(-4)}`
           })
           
           if (retrievalCycleIds.length === 1) {

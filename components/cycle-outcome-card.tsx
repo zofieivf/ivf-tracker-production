@@ -418,8 +418,8 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
           }
         </CardDescription>
       </CardHeader>
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)}>
+      <Form {...(isTransferCycle ? transferForm : retrievalForm)}>
+        <form onSubmit={(isTransferCycle ? transferForm : retrievalForm).handleSubmit(onSubmit)}>
           <CardContent className="space-y-6">
             {isTransferCycle ? (
               // Transfer cycle form fields

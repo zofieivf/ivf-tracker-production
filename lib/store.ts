@@ -2,11 +2,12 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile } from "./types"
+import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile, NaturalPregnancy } from "./types"
 
 interface IVFStore {
   cycles: IVFCycle[]
   procedures: ProcedureRecord[]
+  naturalPregnancies: NaturalPregnancy[]
   userProfile: UserProfile | null
   addCycle: (cycle: IVFCycle) => void
   updateCycle: (id: string, cycle: Partial<IVFCycle>) => void
@@ -20,6 +21,10 @@ interface IVFStore {
   updateProcedure: (id: string, procedure: Partial<ProcedureRecord>) => void
   deleteProcedure: (id: string) => void
   getProcedureById: (id: string) => ProcedureRecord | undefined
+  addNaturalPregnancy: (pregnancy: NaturalPregnancy) => void
+  updateNaturalPregnancy: (id: string, pregnancy: Partial<NaturalPregnancy>) => void
+  deleteNaturalPregnancy: (id: string) => void
+  getNaturalPregnancyById: (id: string) => NaturalPregnancy | undefined
   setUserProfile: (profile: UserProfile) => void
   updateUserProfile: (profile: Partial<UserProfile>) => void
 }
@@ -29,6 +34,7 @@ export const useIVFStore = create<IVFStore>()(
     (set, get) => ({
       cycles: [],
       procedures: [],
+      naturalPregnancies: [],
       userProfile: null,
 
       addCycle: (cycle) => {
@@ -134,6 +140,30 @@ export const useIVFStore = create<IVFStore>()(
 
       getProcedureById: (id) => {
         return get().procedures.find((procedure) => procedure.id === id)
+      },
+
+      addNaturalPregnancy: (pregnancy) => {
+        set((state) => ({
+          naturalPregnancies: [...state.naturalPregnancies, pregnancy],
+        }))
+      },
+
+      updateNaturalPregnancy: (id, updatedPregnancy) => {
+        set((state) => ({
+          naturalPregnancies: state.naturalPregnancies.map((pregnancy) => 
+            pregnancy.id === id ? { ...pregnancy, ...updatedPregnancy } : pregnancy
+          ),
+        }))
+      },
+
+      deleteNaturalPregnancy: (id) => {
+        set((state) => ({
+          naturalPregnancies: state.naturalPregnancies.filter((pregnancy) => pregnancy.id !== id),
+        }))
+      },
+
+      getNaturalPregnancyById: (id) => {
+        return get().naturalPregnancies.find((pregnancy) => pregnancy.id === id)
       },
 
       setUserProfile: (profile) => {

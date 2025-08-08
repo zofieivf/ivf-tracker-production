@@ -142,3 +142,17 @@ export interface ProcedureRecord {
   notes?: string
   results?: string
 }
+
+export interface NaturalPregnancy {
+  id: string
+  dateOfConception: string
+  ageAtConception?: number
+  dueDateOrBirthDate: string
+  isDateOfBirth: boolean // true if it's date of birth, false if it's due date
+  pregnancyOutcome?: "ongoing" | "live-birth" | "miscarriage" | "medical-termination"
+  outcomeDate?: string // Date of miscarriage, termination, or birth
+  reason?: string // Reason for miscarriage or termination
+  notes?: string
+  createdAt: string
+  updatedAt?: string
+}
