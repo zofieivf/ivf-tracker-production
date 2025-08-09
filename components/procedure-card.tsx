@@ -49,7 +49,7 @@ export function ProcedureCard({ procedure }: ProcedureCardProps) {
         </div>
       </CardHeader>
       
-      <CardContent className="pt-0">
+      <CardContent className="pt-3">
         <div className="space-y-3">
           {procedure.clinicName && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">

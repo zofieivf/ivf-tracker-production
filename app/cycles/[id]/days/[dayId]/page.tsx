@@ -9,11 +9,12 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useIVFStore } from "@/lib/store"
+import { DailyMedicationChecklist } from "@/components/daily-medication-checklist"
 import type { CycleDay } from "@/lib/types"
 
 export default function DayDetailPage({ params }: { params: { id: string; dayId: string } }) {
   const router = useRouter()
-  const { getCycleById } = useIVFStore()
+  const { getCycleById, getMedicationScheduleByCycleId } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === params.dayId))
   const [mounted, setMounted] = useState(false)
@@ -70,8 +71,17 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {day.medications && day.medications.length > 0 && (
+      <div className="space-y-6">
+        {/* Medication Checklist */}
+        <DailyMedicationChecklist 
+          cycleId={params.id} 
+          cycleDay={day.cycleDay} 
+          date={day.date} 
+        />
+
+        <div className="grid gap-6 md:grid-cols-2">
+        {/* Only show old medications if no medication schedule exists */}
+        {day.medications && day.medications.length > 0 && !getMedicationScheduleByCycleId(params.id) && (
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">
@@ -236,6 +246,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
             </CardContent>
           </Card>
         )}
+        </div>
       </div>
     </div>
   )

@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Calendar, Edit, Plus, User, Target, Trash2 } from "lucide-react"
+import { ArrowLeft, Calendar, Edit, Plus, User, Target, Trash2, Pill } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -170,6 +170,12 @@ export default function CyclePage({ params }: { params: { id: string } }) {
           </div>
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+            <Button asChild variant="outline">
+              <Link href={`/cycles/${cycle.id}/medication-schedule`}>
+                <Pill className="h-4 w-4 mr-2" />
+                Medication Schedule
+              </Link>
+            </Button>
             <Button asChild>
               <Link href={`/cycles/${cycle.id}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />

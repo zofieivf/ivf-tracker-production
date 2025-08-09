@@ -2,12 +2,14 @@
 
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
-import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile, NaturalPregnancy } from "./types"
+import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile, NaturalPregnancy, MedicationSchedule, DailyMedicationStatus } from "./types"
 
 interface IVFStore {
   cycles: IVFCycle[]
   procedures: ProcedureRecord[]
   naturalPregnancies: NaturalPregnancy[]
+  medicationSchedules: MedicationSchedule[]
+  dailyMedicationStatuses: DailyMedicationStatus[]
   userProfile: UserProfile | null
   addCycle: (cycle: IVFCycle) => void
   updateCycle: (id: string, cycle: Partial<IVFCycle>) => void
@@ -25,6 +27,14 @@ interface IVFStore {
   updateNaturalPregnancy: (id: string, pregnancy: Partial<NaturalPregnancy>) => void
   deleteNaturalPregnancy: (id: string) => void
   getNaturalPregnancyById: (id: string) => NaturalPregnancy | undefined
+  addMedicationSchedule: (schedule: MedicationSchedule) => void
+  updateMedicationSchedule: (id: string, schedule: Partial<MedicationSchedule>) => void
+  deleteMedicationSchedule: (id: string) => void
+  getMedicationScheduleById: (id: string) => MedicationSchedule | undefined
+  getMedicationScheduleByCycleId: (cycleId: string) => MedicationSchedule | undefined
+  addDailyMedicationStatus: (status: DailyMedicationStatus) => void
+  updateDailyMedicationStatus: (id: string, status: Partial<DailyMedicationStatus>) => void
+  getDailyMedicationStatus: (cycleId: string, cycleDay: number) => DailyMedicationStatus | undefined
   setUserProfile: (profile: UserProfile) => void
   updateUserProfile: (profile: Partial<UserProfile>) => void
 }
@@ -35,6 +45,8 @@ export const useIVFStore = create<IVFStore>()(
       cycles: [],
       procedures: [],
       naturalPregnancies: [],
+      medicationSchedules: [],
+      dailyMedicationStatuses: [],
       userProfile: null,
 
       addCycle: (cycle) => {
@@ -174,6 +186,54 @@ export const useIVFStore = create<IVFStore>()(
         set((state) => ({
           userProfile: state.userProfile ? { ...state.userProfile, ...updatedProfile } : null
         }))
+      },
+
+      addMedicationSchedule: (schedule) => {
+        set((state) => ({
+          medicationSchedules: [...state.medicationSchedules, schedule],
+        }))
+      },
+
+      updateMedicationSchedule: (id, updatedSchedule) => {
+        set((state) => ({
+          medicationSchedules: state.medicationSchedules.map((schedule) => 
+            schedule.id === id ? { ...schedule, ...updatedSchedule, updatedAt: new Date().toISOString() } : schedule
+          ),
+        }))
+      },
+
+      deleteMedicationSchedule: (id) => {
+        set((state) => ({
+          medicationSchedules: state.medicationSchedules.filter((schedule) => schedule.id !== id),
+        }))
+      },
+
+      getMedicationScheduleById: (id) => {
+        return get().medicationSchedules.find((schedule) => schedule.id === id)
+      },
+
+      getMedicationScheduleByCycleId: (cycleId) => {
+        return get().medicationSchedules.find((schedule) => schedule.cycleId === cycleId)
+      },
+
+      addDailyMedicationStatus: (status) => {
+        set((state) => ({
+          dailyMedicationStatuses: [...state.dailyMedicationStatuses, status],
+        }))
+      },
+
+      updateDailyMedicationStatus: (id, updatedStatus) => {
+        set((state) => ({
+          dailyMedicationStatuses: state.dailyMedicationStatuses.map((status) => 
+            status.id === id ? { ...status, ...updatedStatus, updatedAt: new Date().toISOString() } : status
+          ),
+        }))
+      },
+
+      getDailyMedicationStatus: (cycleId, cycleDay) => {
+        return get().dailyMedicationStatuses.find((status) => 
+          status.cycleId === cycleId && status.cycleDay === cycleDay
+        )
       },
     }),
     {

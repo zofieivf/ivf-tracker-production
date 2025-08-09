@@ -19,6 +19,57 @@ export interface Medication {
   refrigerated?: boolean
 }
 
+export interface ScheduledMedication {
+  id: string
+  name: string
+  dosage: string
+  hour: string
+  minute: string
+  ampm: string
+  refrigerated: boolean
+  startDay: number // cycle day to start
+  endDay: number // cycle day to end
+  notes?: string
+}
+
+export interface MedicationSchedule {
+  id: string
+  cycleId: string
+  medications: ScheduledMedication[]
+  createdAt: string
+  updatedAt?: string
+}
+
+export interface DailyMedicationStatus {
+  id: string
+  cycleId: string
+  cycleDay: number
+  date: string
+  medications: {
+    scheduledMedicationId: string
+    taken: boolean
+    actualDosage?: string // if different from scheduled
+    takenAt?: string // timestamp when marked as taken
+    skipped: boolean
+    notes?: string
+  }[]
+  daySpecificMedications?: {
+    id: string
+    name: string
+    dosage: string
+    hour: string
+    minute: string
+    ampm: string
+    refrigerated: boolean
+    taken: boolean
+    takenAt?: string
+    skipped: boolean
+    notes?: string
+  }[]
+  createdAt: string
+  updatedAt?: string
+}
+
 export interface ClinicVisit {
   type: "baseline" | "monitoring" | "retrieval" | "transfer" | "other"
   notes?: string

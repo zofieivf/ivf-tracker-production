@@ -100,7 +100,7 @@ export function NaturalPregnancyCard({ pregnancy }: NaturalPregnancyCardProps) {
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <div className="space-y-3">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm">
             {/* Pregnancy Progress - only for ongoing pregnancies */}
