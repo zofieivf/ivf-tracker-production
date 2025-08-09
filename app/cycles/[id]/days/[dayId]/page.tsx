@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Edit, Pill, Droplet, Stethoscope, FileText } from "lucide-react"
+import { ArrowLeft, Edit, Pill, Droplet, Stethoscope, FileText, ChevronLeft, ChevronRight } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +25,21 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
     setCycle(currentCycle)
     setDay(currentCycle?.days.find((d) => d.id === params.dayId))
   }, [params.id, params.dayId, getCycleById])
+
+  // Navigation helpers
+  const getNavigationInfo = () => {
+    if (!cycle || !day) return { prevDay: null, nextDay: null }
+    
+    const sortedDays = cycle.days.sort((a, b) => a.cycleDay - b.cycleDay)
+    const currentIndex = sortedDays.findIndex(d => d.id === day.id)
+    
+    return {
+      prevDay: currentIndex > 0 ? sortedDays[currentIndex - 1] : null,
+      nextDay: currentIndex < sortedDays.length - 1 ? sortedDays[currentIndex + 1] : null
+    }
+  }
+
+  const { prevDay, nextDay } = getNavigationInfo()
 
   if (!mounted) return null
 
@@ -63,12 +78,45 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
           <p className="text-muted-foreground mt-1">{cycle.name}</p>
         </div>
 
-        <Button asChild variant="outline" size="sm">
-          <Link href={`/cycles/${params.id}/days/${params.dayId}/edit`}>
-            <Edit className="h-4 w-4 mr-2" />
-            Edit Day
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Previous Day Button */}
+          {prevDay ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/cycles/${params.id}/days/${prevDay.id}`}>
+                <ChevronLeft className="h-4 w-4 mr-2" />
+                Day {prevDay.cycleDay}
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              <ChevronLeft className="h-4 w-4 mr-2" />
+              Previous
+            </Button>
+          )}
+          
+          {/* Next Day Button */}
+          {nextDay ? (
+            <Button asChild variant="outline" size="sm">
+              <Link href={`/cycles/${params.id}/days/${nextDay.id}`}>
+                Day {nextDay.cycleDay}
+                <ChevronRight className="h-4 w-4 ml-2" />
+              </Link>
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" disabled>
+              Next
+              <ChevronRight className="h-4 w-4 ml-2" />
+            </Button>
+          )}
+
+          {/* Edit Day Button */}
+          <Button asChild variant="outline" size="sm">
+            <Link href={`/cycles/${params.id}/days/${params.dayId}/edit`}>
+              <Edit className="h-4 w-4 mr-2" />
+              Edit Day
+            </Link>
+          </Button>
+        </div>
       </div>
 
       <div className="space-y-6">

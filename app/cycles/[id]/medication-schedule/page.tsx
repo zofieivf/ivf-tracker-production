@@ -201,6 +201,22 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
         <p className="text-muted-foreground mt-1">
           Set up your medication protocol for {cycle.name}
         </p>
+        
+        {/* Usage Instructions */}
+        <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <div className="flex items-start gap-3">
+            <Pill className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+            <div>
+              <h3 className="font-semibold text-blue-900 mb-2">When to Use Medication Schedule</h3>
+              <p className="text-blue-800 text-sm mb-3">
+                Use this medication schedule for <strong>recurring medications</strong> that you take on the same schedule for multiple days. This makes it easy to set up your regular protocol once and track daily compliance.
+              </p>
+              <p className="text-blue-800 text-sm">
+                <strong>For one-time doses</strong> or if you prefer <strong>day-by-day tracking</strong>, use the "Edit Day" function on individual cycle days instead.
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <div className="space-y-6">
@@ -247,7 +263,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
           <CardHeader>
             <CardTitle>Medication Schedule</CardTitle>
             <CardDescription>
-              Add medications with their dosages, timing, and duration
+              Add recurring medications with their dosages, timing, and duration. These will appear on each day within the specified date range for easy daily tracking.
             </CardDescription>
           </CardHeader>
           <Form {...form}>

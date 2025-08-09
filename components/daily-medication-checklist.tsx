@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { format, parseISO } from "date-fns"
-import { Clock, Pill, CheckCircle2, Circle, Edit3, Snowflake, Plus, Settings } from "lucide-react"
+import { Clock, Pill, CheckCircle2, Circle, Edit3, Snowflake } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -40,18 +40,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
   const [editingMed, setEditingMed] = useState<string | null>(null)
   const [tempDosage, setTempDosage] = useState("")
   const [tempNotes, setTempNotes] = useState("")
-  
-  // Day adjustment dialog state
-  const [showAdjustDialog, setShowAdjustDialog] = useState(false)
-  const [newMedication, setNewMedication] = useState({
-    name: "",
-    dosage: "",
-    hour: "8",
-    minute: "00",
-    ampm: "PM" as "AM" | "PM",
-    refrigerated: false,
-    notes: ""
-  })
   
   const schedule = getMedicationScheduleByCycleId(cycleId)
   const dailyStatus = getDailyMedicationStatus(cycleId, cycleDay)
@@ -174,41 +162,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     return dailyStatus?.medications.find(m => m.scheduledMedicationId === scheduledMedicationId)
   }
 
-  const addDaySpecificMedication = () => {
-    if (!dailyStatus) return
-
-    const newDayMed = {
-      id: crypto.randomUUID(),
-      name: newMedication.name,
-      dosage: newMedication.dosage,
-      hour: newMedication.hour,
-      minute: newMedication.minute,
-      ampm: newMedication.ampm,
-      refrigerated: newMedication.refrigerated,
-      taken: false,
-      skipped: false,
-      notes: newMedication.notes
-    }
-
-    const currentDayMeds = dailyStatus.daySpecificMedications || []
-    
-    updateDailyMedicationStatus(dailyStatus.id, {
-      daySpecificMedications: [...currentDayMeds, newDayMed],
-      updatedAt: new Date().toISOString(),
-    })
-
-    // Reset form
-    setNewMedication({
-      name: "",
-      dosage: "",
-      hour: "8",
-      minute: "00",
-      ampm: "PM",
-      refrigerated: false,
-      notes: ""
-    })
-    setShowAdjustDialog(false)
-  }
 
   const updateDaySpecificMedication = (medId: string, updates: any) => {
     if (!dailyStatus) return
@@ -368,16 +321,8 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
               {completedCount}/{totalMedications}
             </Badge>
           </CardTitle>
-          <CardDescription className="flex items-center justify-between">
-            <span>Cycle Day {cycleDay} - {format(parseISO(date), "MMMM d, yyyy")}</span>
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={() => setShowAdjustDialog(true)}
-            >
-              <Settings className="h-4 w-4 mr-2" />
-              Adjust for This Day
-            </Button>
+          <CardDescription>
+            Cycle Day {cycleDay} - {format(parseISO(date), "MMMM d, yyyy")}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -416,7 +361,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium">{medication.name}</span>
-                              <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                              <Badge variant="secondary" className="text-xs">Medication Schedule</Badge>
                               <span className="text-sm text-muted-foreground">{actualDosage}</span>
                               {medication.refrigerated && (
                                 <Snowflake className="h-4 w-4 text-blue-500" />
@@ -634,7 +579,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="font-medium">{medication.name}</span>
-                              <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                              <Badge variant="secondary" className="text-xs">Medication Schedule</Badge>
                               <span className="text-sm text-muted-foreground">{actualDosage}</span>
                               {medication.refrigerated && (
                                 <Snowflake className="h-4 w-4 text-blue-500" />
@@ -861,118 +806,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
         </DialogContent>
       </Dialog>
 
-      {/* Adjust for This Day Dialog */}
-      <Dialog open={showAdjustDialog} onOpenChange={() => setShowAdjustDialog(false)}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Add Medication for This Day</DialogTitle>
-            <DialogDescription>
-              Add a one-time medication for cycle day {cycleDay} only
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Medication Name</label>
-              <Input
-                value={newMedication.name}
-                onChange={(e) => setNewMedication(prev => ({ ...prev, name: e.target.value }))}
-                placeholder="e.g., Extra Estrace"
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Dosage</label>
-              <Input
-                value={newMedication.dosage}
-                onChange={(e) => setNewMedication(prev => ({ ...prev, dosage: e.target.value }))}
-                placeholder="e.g., 2mg"
-              />
-            </div>
-
-            <div>
-              <label className="text-sm font-medium">Time</label>
-              <div className="flex gap-2">
-                <Select 
-                  value={newMedication.hour} 
-                  onValueChange={(value) => setNewMedication(prev => ({ ...prev, hour: value }))}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
-                      <SelectItem key={hour} value={hour.toString()}>
-                        {hour}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <span className="self-center">:</span>
-                <Select 
-                  value={newMedication.minute} 
-                  onValueChange={(value) => setNewMedication(prev => ({ ...prev, minute: value }))}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="00">00</SelectItem>
-                    <SelectItem value="15">15</SelectItem>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="45">45</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Select 
-                  value={newMedication.ampm} 
-                  onValueChange={(value) => setNewMedication(prev => ({ ...prev, ampm: value as "AM" | "PM" }))}
-                >
-                  <SelectTrigger className="w-20">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="AM">AM</SelectItem>
-                    <SelectItem value="PM">PM</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="day-specific-refrigerated"
-                checked={newMedication.refrigerated}
-                onCheckedChange={(checked) => setNewMedication(prev => ({ ...prev, refrigerated: !!checked }))}
-              />
-              <label htmlFor="day-specific-refrigerated" className="text-sm font-medium">
-                Requires refrigeration
-              </label>
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Notes (Optional)</label>
-              <Textarea
-                value={newMedication.notes}
-                onChange={(e) => setNewMedication(prev => ({ ...prev, notes: e.target.value }))}
-                placeholder="Any notes about this medication..."
-                rows={2}
-              />
-            </div>
-          </div>
-          
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowAdjustDialog(false)}>
-              Cancel
-            </Button>
-            <Button 
-              onClick={addDaySpecificMedication}
-              disabled={!newMedication.name || !newMedication.dosage}
-            >
-              Add Medication
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

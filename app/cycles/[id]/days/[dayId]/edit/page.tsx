@@ -132,16 +132,34 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
             // This is a scheduled medication that may have been modified
             scheduledMedsInForm.add(originalScheduledMed.id)
             
-            const isModified = 
+            const isDosageOnlyChange = 
+              med.name === originalScheduledMed.name &&
+              med.hour === originalScheduledMed.hour &&
+              med.minute === originalScheduledMed.minute &&
+              med.ampm === originalScheduledMed.ampm &&
+              med.refrigerated === originalScheduledMed.refrigerated &&
+              med.dosage !== originalScheduledMed.dosage
+            
+            const isSignificantChange = 
               med.name !== originalScheduledMed.name ||
-              med.dosage !== originalScheduledMed.dosage ||
               med.hour !== originalScheduledMed.hour ||
               med.minute !== originalScheduledMed.minute ||
               med.ampm !== originalScheduledMed.ampm ||
               med.refrigerated !== originalScheduledMed.refrigerated
             
-            if (isModified) {
-              // Treat modified scheduled medication as day-specific override
+            if (isDosageOnlyChange) {
+              // Just dosage change - update actualDosage in the medication status
+              const existingStatus = dailyStatus.medications.find(m => m.scheduledMedicationId === originalScheduledMed.id)
+              updatedMedicationStatuses.push({
+                scheduledMedicationId: originalScheduledMed.id,
+                taken: med.taken,
+                skipped: existingStatus?.skipped || false,
+                actualDosage: med.dosage, // Update the dosage
+                takenAt: med.taken ? new Date().toISOString() : existingStatus?.takenAt,
+                notes: existingStatus?.notes,
+              })
+            } else if (isSignificantChange) {
+              // Significant change - treat as day-specific override
               daySpecificMedications.push({
                 id: crypto.randomUUID(),
                 name: med.name,
@@ -173,7 +191,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                 taken: med.taken,
                 skipped: existingStatus?.skipped || false,
                 actualDosage: existingStatus?.actualDosage,
-                takenAt: existingStatus?.takenAt,
+                takenAt: med.taken ? new Date().toISOString() : existingStatus?.takenAt,
                 notes: existingStatus?.notes,
               })
             }
@@ -209,9 +227,8 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
           }
         })
         
-        // Merge with existing day-specific medications
-        const existingDaySpecific = dailyStatus.daySpecificMedications || []
-        const allDaySpecific = [...existingDaySpecific, ...daySpecificMedications]
+        // Replace day-specific medications entirely (don't merge, so deleted ones are removed)
+        const allDaySpecific = daySpecificMedications
         
         updateDailyMedicationStatus(dailyStatus.id, {
           medications: updatedMedicationStatuses,
