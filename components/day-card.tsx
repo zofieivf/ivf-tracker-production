@@ -6,6 +6,7 @@ import { Card, CardContent, CardFooter } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Pill, Droplet, Stethoscope, FileText, Plus } from "lucide-react"
+import { useIVFStore } from "@/lib/store"
 import type { CycleDay } from "@/lib/types"
 
 interface DayCardProps {
@@ -15,7 +16,24 @@ interface DayCardProps {
 }
 
 export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
-  const hasMedications = day.medications && day.medications.length > 0
+  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+  
+  // Check legacy medications
+  const hasLegacyMedications = day.medications && day.medications.length > 0
+  
+  // Check new medication system
+  const schedule = getMedicationScheduleByCycleId(cycleId)
+  const dailyStatus = getDailyMedicationStatus(cycleId, day.cycleDay)
+  const scheduledMedications = schedule?.medications.filter(
+    med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
+  ) || []
+  const daySpecificMedications = dailyStatus?.daySpecificMedications || []
+  
+  const totalMedicationCount = (hasLegacyMedications ? day.medications.length : 0) + 
+                              scheduledMedications.length + 
+                              daySpecificMedications.length
+  
+  const hasMedications = hasLegacyMedications || totalMedicationCount > 0
   const hasClinicVisit = !!day.clinicVisit
   const hasFollicleSizes = !!day.follicleSizes
   const hasBloodwork = !!day.bloodwork && day.bloodwork.length > 0
@@ -41,7 +59,7 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
               <div className="flex items-center gap-2">
                 <Pill className="h-4 w-4 text-primary" />
                 <span className="text-sm">
-                  {day.medications.length} medication{day.medications.length !== 1 ? "s" : ""}
+                  {totalMedicationCount} medication{totalMedicationCount !== 1 ? "s" : ""}
                 </span>
               </div>
             )}

@@ -18,7 +18,7 @@ import type { CycleDay, Medication, ClinicVisit, FollicleMeasurement, BloodworkR
 
 export default function EditDayPage({ params }: { params: { id: string; dayId: string } }) {
   const router = useRouter()
-  const { getCycleById, updateDay } = useIVFStore()
+  const { getCycleById, updateDay, getMedicationScheduleByCycleId, getDailyMedicationStatus, updateDailyMedicationStatus } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === params.dayId))
   const [mounted, setMounted] = useState(false)
@@ -39,14 +39,56 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
     setDay(currentDay)
 
     if (currentDay) {
-      setMedications(currentDay.medications || [])
+      // Load medications from schedule and convert to legacy format for editing
+      const schedule = getMedicationScheduleByCycleId(params.id)
+      const dailyStatus = getDailyMedicationStatus(params.id, currentDay.cycleDay)
+      const scheduledMeds: Medication[] = []
+      
+      if (schedule) {
+        const todaysMedications = schedule.medications.filter(
+          med => med.startDay <= currentDay.cycleDay && med.endDay >= currentDay.cycleDay
+        )
+        
+        todaysMedications.forEach(scheduledMed => {
+          const status = dailyStatus?.medications.find(m => m.scheduledMedicationId === scheduledMed.id)
+          scheduledMeds.push({
+            name: scheduledMed.name,
+            dosage: status?.actualDosage || scheduledMed.dosage,
+            hour: scheduledMed.hour,
+            minute: scheduledMed.minute,
+            ampm: scheduledMed.ampm,
+            taken: status?.taken || false,
+            refrigerated: scheduledMed.refrigerated,
+          })
+        })
+        
+        // Add day-specific medications from daily status
+        if (dailyStatus?.daySpecificMedications) {
+          dailyStatus.daySpecificMedications.forEach(dayMed => {
+            scheduledMeds.push({
+              name: dayMed.name,
+              dosage: dayMed.dosage,
+              hour: dayMed.hour,
+              minute: dayMed.minute,
+              ampm: dayMed.ampm,
+              taken: dayMed.taken,
+              refrigerated: dayMed.refrigerated,
+            })
+          })
+        }
+      }
+      
+      // If no scheduled medications, fall back to old day.medications
+      const allMedications = scheduledMeds.length > 0 ? scheduledMeds : (currentDay.medications || [])
+      
+      setMedications(allMedications)
       setClinicVisit(currentDay.clinicVisit)
       setFollicleSizes(currentDay.follicleSizes)
       setBloodwork(currentDay.bloodwork || [])
       setNotes(currentDay.notes || "")
       setLiningCheck(!!currentDay.follicleSizes?.liningThickness)
     }
-  }, [params.id, params.dayId, getCycleById])
+  }, [params.id, params.dayId, getCycleById, getMedicationScheduleByCycleId, getDailyMedicationStatus])
 
   if (!mounted) return null
 
@@ -55,7 +97,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
       <div className="container max-w-4xl py-10">
         <div className="flex flex-col items-center justify-center py-20">
           <h2 className="text-2xl font-bold mb-2">Day not found</h2>
-          <p className="text-muted-foreground mb-6">The day you're looking for doesn't exist</p>
+          <p className="text-muted-foreground mb-6">The day you&apos;re looking for doesn&apos;t exist</p>
           <Button asChild>
             <Link href={`/cycles/${params.id}`}>Go back to cycle</Link>
           </Button>
@@ -65,16 +107,142 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
   }
 
   const handleSubmit = () => {
-    const updatedDay: CycleDay = {
-      ...day,
-      medications,
-      clinicVisit,
-      follicleSizes,
-      bloodwork,
-      notes: notes || undefined,
+    const schedule = getMedicationScheduleByCycleId(params.id)
+    
+    if (schedule && day) {
+      // If we have a schedule, we need to save medication changes back to the daily status
+      const dailyStatus = getDailyMedicationStatus(params.id, day.cycleDay)
+      const todaysMedications = schedule.medications.filter(
+        med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
+      )
+      
+      if (dailyStatus) {
+        
+        // Process medications to determine which are modified scheduled meds vs day-specific
+        const updatedMedicationStatuses = []
+        const daySpecificMedications = []
+        
+        // Track which scheduled medications are still present (not deleted)
+        const scheduledMedsInForm = new Set()
+        
+        medications.forEach(med => {
+          const originalScheduledMed = todaysMedications.find(scheduledMed => scheduledMed.name === med.name)
+          
+          if (originalScheduledMed) {
+            // This is a scheduled medication that may have been modified
+            scheduledMedsInForm.add(originalScheduledMed.id)
+            
+            const isModified = 
+              med.name !== originalScheduledMed.name ||
+              med.dosage !== originalScheduledMed.dosage ||
+              med.hour !== originalScheduledMed.hour ||
+              med.minute !== originalScheduledMed.minute ||
+              med.ampm !== originalScheduledMed.ampm ||
+              med.refrigerated !== originalScheduledMed.refrigerated
+            
+            if (isModified) {
+              // Treat modified scheduled medication as day-specific override
+              daySpecificMedications.push({
+                id: crypto.randomUUID(),
+                name: med.name,
+                dosage: med.dosage,
+                hour: med.hour,
+                minute: med.minute,
+                ampm: med.ampm,
+                refrigerated: med.refrigerated,
+                taken: med.taken,
+                skipped: false,
+                takenAt: med.taken ? new Date().toISOString() : undefined,
+              })
+              
+              // Mark the original scheduled medication as skipped
+              const existingStatus = dailyStatus.medications.find(m => m.scheduledMedicationId === originalScheduledMed.id)
+              updatedMedicationStatuses.push({
+                scheduledMedicationId: originalScheduledMed.id,
+                taken: false,
+                skipped: true,
+                actualDosage: existingStatus?.actualDosage,
+                takenAt: existingStatus?.takenAt,
+                notes: existingStatus?.notes,
+              })
+            } else {
+              // Unmodified scheduled medication, just update taken status
+              const existingStatus = dailyStatus.medications.find(m => m.scheduledMedicationId === originalScheduledMed.id)
+              updatedMedicationStatuses.push({
+                scheduledMedicationId: originalScheduledMed.id,
+                taken: med.taken,
+                skipped: existingStatus?.skipped || false,
+                actualDosage: existingStatus?.actualDosage,
+                takenAt: existingStatus?.takenAt,
+                notes: existingStatus?.notes,
+              })
+            }
+          } else {
+            // This is a new day-specific medication
+            daySpecificMedications.push({
+              id: crypto.randomUUID(),
+              name: med.name,
+              dosage: med.dosage,
+              hour: med.hour,
+              minute: med.minute,
+              ampm: med.ampm,
+              refrigerated: med.refrigerated,
+              taken: med.taken,
+              skipped: false,
+              takenAt: med.taken ? new Date().toISOString() : undefined,
+            })
+          }
+        })
+        
+        // Handle deleted scheduled medications (mark as skipped)
+        todaysMedications.forEach(scheduledMed => {
+          if (!scheduledMedsInForm.has(scheduledMed.id)) {
+            const existingStatus = dailyStatus.medications.find(m => m.scheduledMedicationId === scheduledMed.id)
+            updatedMedicationStatuses.push({
+              scheduledMedicationId: scheduledMed.id,
+              taken: false,
+              skipped: true,
+              actualDosage: existingStatus?.actualDosage,
+              takenAt: existingStatus?.takenAt,
+              notes: existingStatus?.notes,
+            })
+          }
+        })
+        
+        // Merge with existing day-specific medications
+        const existingDaySpecific = dailyStatus.daySpecificMedications || []
+        const allDaySpecific = [...existingDaySpecific, ...daySpecificMedications]
+        
+        updateDailyMedicationStatus(dailyStatus.id, {
+          medications: updatedMedicationStatuses,
+          daySpecificMedications: allDaySpecific,
+          updatedAt: new Date().toISOString(),
+        })
+      }
+      
+      // Save other day data without medications
+      const updatedDay: CycleDay = {
+        ...day,
+        medications: undefined, // Don't store in legacy format when using schedule
+        clinicVisit,
+        follicleSizes,
+        bloodwork,
+        notes: notes || undefined,
+      }
+      updateDay(params.id, params.dayId, updatedDay)
+    } else {
+      // If no schedule, save to legacy format
+      const updatedDay: CycleDay = {
+        ...day,
+        medications,
+        clinicVisit,
+        follicleSizes,
+        bloodwork,
+        notes: notes || undefined,
+      }
+      updateDay(params.id, params.dayId, updatedDay)
     }
 
-    updateDay(params.id, params.dayId, updatedDay)
     router.push(`/cycles/${params.id}/days/${params.dayId}`)
   }
 
@@ -82,7 +250,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
     setMedications([...medications, { name: "", taken: false, hour: "", minute: "", ampm: "", dosage: "", refrigerated: false }])
   }
 
-  const updateMedication = (index: number, field: keyof Medication, value: any) => {
+  const updateMedication = (index: number, field: keyof Medication, value: string | boolean) => {
     const updated = medications.map((med, i) => (i === index ? { ...med, [field]: value } : med))
     setMedications(updated)
   }
@@ -164,113 +332,137 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                 Add
               </Button>
             </div>
+            {getMedicationScheduleByCycleId(params.id) && (
+              <p className="text-sm text-muted-foreground">
+                Includes medications from schedule. Any edits will override the scheduled medication for this day only.
+              </p>
+            )}
           </CardHeader>
           <CardContent className="space-y-4">
-            {medications.map((med, index) => (
-              <div key={index} className="border rounded-lg p-4 space-y-3">
-                <div className="flex justify-between items-start">
-                  <div className="flex-1 space-y-3">
-                    <div>
-                      <Label htmlFor={`med-name-${index}`}>Medication Name</Label>
-                      <Input
-                        id={`med-name-${index}`}
-                        value={med.name}
-                        onChange={(e) => updateMedication(index, "name", e.target.value)}
-                        placeholder="e.g., Gonal-F"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`med-dosage-${index}`}>Dosage</Label>
-                      <Input
-                        id={`med-dosage-${index}`}
-                        value={med.dosage || ""}
-                        onChange={(e) => updateMedication(index, "dosage", e.target.value)}
-                        placeholder="e.g., 225 IU"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor={`med-time-${index}`}>Time to Take</Label>
-                      <div className="grid grid-cols-3 gap-2">
-                        <Select
-                          value={med.hour || ""}
-                          onValueChange={(value) => updateMedication(index, "hour", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Hour" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="1">1</SelectItem>
-                            <SelectItem value="2">2</SelectItem>
-                            <SelectItem value="3">3</SelectItem>
-                            <SelectItem value="4">4</SelectItem>
-                            <SelectItem value="5">5</SelectItem>
-                            <SelectItem value="6">6</SelectItem>
-                            <SelectItem value="7">7</SelectItem>
-                            <SelectItem value="8">8</SelectItem>
-                            <SelectItem value="9">9</SelectItem>
-                            <SelectItem value="10">10</SelectItem>
-                            <SelectItem value="11">11</SelectItem>
-                            <SelectItem value="12">12</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={med.minute || ""}
-                          onValueChange={(value) => updateMedication(index, "minute", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Min" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="00">00</SelectItem>
-                            <SelectItem value="15">15</SelectItem>
-                            <SelectItem value="30">30</SelectItem>
-                            <SelectItem value="45">45</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={med.ampm || ""}
-                          onValueChange={(value) => updateMedication(index, "ampm", value)}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="AM/PM" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="AM">AM</SelectItem>
-                            <SelectItem value="PM">PM</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <div className="flex items-center space-x-4">
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`med-taken-${index}`}
-                          checked={med.taken}
-                          onCheckedChange={(checked) => updateMedication(index, "taken", checked)}
+            {medications.map((med, index) => {
+              const schedule = getMedicationScheduleByCycleId(params.id)
+              const isScheduled = schedule && day && schedule.medications.some(scheduledMed => 
+                scheduledMed.name === med.name && 
+                scheduledMed.startDay <= day.cycleDay && 
+                scheduledMed.endDay >= day.cycleDay
+              )
+              
+              return (
+                <div key={index} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <Label htmlFor={`med-name-${index}`}>Medication Name</Label>
+                          {isScheduled && (
+                            <Badge variant="secondary" className="text-xs">From Schedule</Badge>
+                          )}
+                        </div>
+                        <Input
+                          id={`med-name-${index}`}
+                          value={med.name}
+                          onChange={(e) => updateMedication(index, "name", e.target.value)}
+                          placeholder="e.g., Gonal-F"
                         />
-                        <Label htmlFor={`med-taken-${index}`}>Taken</Label>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`med-refrigerated-${index}`}
-                          checked={med.refrigerated || false}
-                          onCheckedChange={(checked) => updateMedication(index, "refrigerated", checked)}
+                      <div>
+                        <Label htmlFor={`med-dosage-${index}`}>Dosage</Label>
+                        <Input
+                          id={`med-dosage-${index}`}
+                          value={med.dosage || ""}
+                          onChange={(e) => updateMedication(index, "dosage", e.target.value)}
+                          placeholder="e.g., 225 IU"
                         />
-                        <Label htmlFor={`med-refrigerated-${index}`}>Refrigerated</Label>
+                        {isScheduled && (
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Editing will override the scheduled medication for this day only
+                          </p>
+                        )}
+                      </div>
+                      <div>
+                        <Label htmlFor={`med-time-${index}`}>Time to Take</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          <Select
+                            value={med.hour || ""}
+                            onValueChange={(value) => updateMedication(index, "hour", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Hour" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1">1</SelectItem>
+                              <SelectItem value="2">2</SelectItem>
+                              <SelectItem value="3">3</SelectItem>
+                              <SelectItem value="4">4</SelectItem>
+                              <SelectItem value="5">5</SelectItem>
+                              <SelectItem value="6">6</SelectItem>
+                              <SelectItem value="7">7</SelectItem>
+                              <SelectItem value="8">8</SelectItem>
+                              <SelectItem value="9">9</SelectItem>
+                              <SelectItem value="10">10</SelectItem>
+                              <SelectItem value="11">11</SelectItem>
+                              <SelectItem value="12">12</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={med.minute || ""}
+                            onValueChange={(value) => updateMedication(index, "minute", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Min" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="00">00</SelectItem>
+                              <SelectItem value="15">15</SelectItem>
+                              <SelectItem value="30">30</SelectItem>
+                              <SelectItem value="45">45</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Select
+                            value={med.ampm || ""}
+                            onValueChange={(value) => updateMedication(index, "ampm", value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="AM/PM" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="AM">AM</SelectItem>
+                              <SelectItem value="PM">PM</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-4">
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`med-taken-${index}`}
+                            checked={med.taken}
+                            onCheckedChange={(checked) => updateMedication(index, "taken", checked)}
+                          />
+                          <Label htmlFor={`med-taken-${index}`}>Taken</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Checkbox
+                            id={`med-refrigerated-${index}`}
+                            checked={med.refrigerated || false}
+                            onCheckedChange={(checked) => updateMedication(index, "refrigerated", checked)}
+                          />
+                          <Label htmlFor={`med-refrigerated-${index}`}>Refrigerated</Label>
+                        </div>
                       </div>
                     </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeMedication(index)}
+                      className="text-red-600 hover:text-red-700"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeMedication(index)}
-                    className="text-red-600 hover:text-red-700"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
                 </div>
-              </div>
-            ))}
+              )
+            })}
             {medications.length === 0 && (
               <p className="text-muted-foreground text-center py-4">No medications added yet</p>
             )}
@@ -304,7 +496,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
                   <Label htmlFor="visit-type">Visit Type</Label>
                   <Select
                     value={clinicVisit.type}
-                    onValueChange={(value: any) => setClinicVisit({ ...clinicVisit, type: value })}
+                    onValueChange={(value: "baseline" | "monitoring" | "retrieval" | "transfer" | "other") => setClinicVisit({ ...clinicVisit, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
