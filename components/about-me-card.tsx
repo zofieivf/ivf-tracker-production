@@ -48,6 +48,8 @@ const aboutMeSchema = z.object({
   }).min(0).max(10),
   childrenFromIVF: z.enum(["yes", "no"]).optional(),
   numberOfIVFChildren: z.number().min(1).max(10).optional(),
+  regularPeriods: z.enum(["yes", "no"]).optional(),
+  menstrualCycleDays: z.number().min(21).max(45).optional(),
 }).refine((data) => {
   if (data.ivfReasons.includes("other") && !data.ivfReasonOther?.trim()) {
     return false
@@ -261,6 +263,8 @@ export function AboutMeCard() {
       livingChildren: userProfile?.livingChildren ?? 0,
       childrenFromIVF: userProfile?.childrenFromIVF || undefined,
       numberOfIVFChildren: userProfile?.numberOfIVFChildren || undefined,
+      regularPeriods: userProfile?.regularPeriods || undefined,
+      menstrualCycleDays: userProfile?.menstrualCycleDays || undefined,
     },
   })
 
@@ -268,6 +272,7 @@ export function AboutMeCard() {
   const watchedDateOfBirth = form.watch("dateOfBirth")
   const watchedLivingChildren = form.watch("livingChildren")
   const watchedChildrenFromIVF = form.watch("childrenFromIVF")
+  const watchedRegularPeriods = form.watch("regularPeriods")
 
   const calculateAge = () => {
     if (watchedDateOfBirth) {
@@ -294,6 +299,8 @@ export function AboutMeCard() {
       livingChildren: values.livingChildren,
       childrenFromIVF: values.childrenFromIVF,
       numberOfIVFChildren: values.numberOfIVFChildren,
+      regularPeriods: values.regularPeriods,
+      menstrualCycleDays: values.menstrualCycleDays,
       createdAt: userProfile?.createdAt || new Date().toISOString(),
     }
 
@@ -370,6 +377,20 @@ export function AboutMeCard() {
               <div>
                 <p className="font-medium">Number from IVF</p>
                 <p>{userProfile.numberOfIVFChildren}</p>
+              </div>
+            )}
+            
+            {userProfile.regularPeriods && (
+              <div>
+                <p className="font-medium">Regular Periods</p>
+                <p>{userProfile.regularPeriods === "yes" ? "Yes" : "No"}</p>
+              </div>
+            )}
+            
+            {userProfile.menstrualCycleDays && (
+              <div>
+                <p className="font-medium">Menstrual Cycle</p>
+                <p>{userProfile.menstrualCycleDays} days</p>
               </div>
             )}
             
@@ -597,6 +618,54 @@ export function AboutMeCard() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <FormField
+              control={form.control}
+              name="regularPeriods"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Regular Periods (Optional)</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select yes or no" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      <SelectItem value="yes">Yes</SelectItem>
+                      <SelectItem value="no">No</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <FormDescription>Do you have regular menstrual periods?</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            {watchedRegularPeriods === "yes" && (
+              <FormField
+                control={form.control}
+                name="menstrualCycleDays"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Menstrual Cycle Length</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        min="21"
+                        max="45"
+                        placeholder="28"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : Number(e.target.value))}
+                        value={field.value || ""}
+                      />
+                    </FormControl>
+                    <FormDescription>Length of your menstrual cycle in days (typically 21-45 days)</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

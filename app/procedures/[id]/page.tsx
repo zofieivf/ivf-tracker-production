@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Calendar, Edit, MapPin, TestTube, FileText, Trash2 } from "lucide-react"
+import { ArrowLeft, Calendar, Edit, MapPin, TestTube, FileText, Trash2, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -58,6 +58,17 @@ export default function ProcedurePage({ params }: { params: { id: string } }) {
   const displayName = procedure.procedureType === "Other" 
     ? procedure.customProcedureName || "Other Procedure"
     : procedure.procedureType
+
+  const formatCurrency = (amount: number | undefined) => {
+    if (!amount) return null
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD'
+    }).format(amount)
+  }
+
+  const totalCost = procedure.cost || 0
+  const netCost = totalCost - (procedure.insuranceCoverage || 0)
 
   return (
     <div className="container max-w-4xl py-10">
@@ -166,6 +177,41 @@ export default function ProcedurePage({ params }: { params: { id: string } }) {
                 <Card className="bg-muted/50">
                   <CardContent className="pt-4">
                     <p className="whitespace-pre-wrap text-sm">{procedure.notes}</p>
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {(procedure.cost || procedure.insuranceCoverage) && (
+              <div className="space-y-2">
+                <h3 className="font-medium text-sm text-muted-foreground flex items-center gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Cost Information
+                </h3>
+                <Card className="bg-muted/50">
+                  <CardContent className="pt-4">
+                    <div className="space-y-3">
+                      {procedure.cost && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Total Cost:</span>
+                          <span className="font-medium">{formatCurrency(procedure.cost)}</span>
+                        </div>
+                      )}
+                      {procedure.insuranceCoverage && (
+                        <div className="flex justify-between items-center">
+                          <span className="text-sm text-muted-foreground">Insurance Coverage:</span>
+                          <span className="font-medium text-green-600">-{formatCurrency(procedure.insuranceCoverage)}</span>
+                        </div>
+                      )}
+                      {procedure.cost && procedure.insuranceCoverage && (
+                        <div className="flex justify-between items-center border-t pt-3">
+                          <span className="text-sm font-medium">Net Cost:</span>
+                          <span className={`font-bold text-lg ${netCost < 0 ? "text-green-600" : ""}`}>
+                            {formatCurrency(netCost)}
+                          </span>
+                        </div>
+                      )}
+                    </div>
                   </CardContent>
                 </Card>
               </div>

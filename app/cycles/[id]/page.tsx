@@ -25,6 +25,8 @@ import { useIVFStore } from "@/lib/store"
 import { DayCard } from "@/components/day-card"
 import { CycleOutcomeCard } from "@/components/cycle-outcome-card"
 import { CycleChartsView } from "@/components/cycle-charts-view"
+import { CycleCostsView } from "@/components/cycle-costs-view"
+import { CycleMedicationOverview } from "@/components/cycle-medication-overview"
 
 export default function CyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
@@ -215,10 +217,12 @@ export default function CyclePage({ params }: { params: { id: string } }) {
 
         {/* Main Content */}
         <Tabs defaultValue="days" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="days">Daily Tracking</TabsTrigger>
+            <TabsTrigger value="medications">Medications</TabsTrigger>
             <TabsTrigger value="outcome">Cycle Outcome</TabsTrigger>
             <TabsTrigger value="charts">Charts & Analysis</TabsTrigger>
+            <TabsTrigger value="costs">Costs</TabsTrigger>
           </TabsList>
 
           <TabsContent value="days" className="space-y-4">
@@ -356,6 +360,14 @@ export default function CyclePage({ params }: { params: { id: string } }) {
 
           <TabsContent value="outcome">
             <CycleOutcomeCard cycle={cycle} />
+          </TabsContent>
+
+          <TabsContent value="costs">
+            <CycleCostsView cycle={cycle} />
+          </TabsContent>
+
+          <TabsContent value="medications">
+            <CycleMedicationOverview cycle={cycle} />
           </TabsContent>
         </Tabs>
       </div>

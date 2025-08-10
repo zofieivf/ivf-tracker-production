@@ -107,6 +107,7 @@ export default function EditDayPage({ params }: { params: { id: string; dayId: s
   }
 
   const handleSubmit = () => {
+    console.log('Save - Current bloodwork state:', bloodwork)
     const schedule = getMedicationScheduleByCycleId(params.id)
     
     if (schedule && day) {

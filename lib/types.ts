@@ -106,7 +106,17 @@ export interface UserProfile {
   livingChildren: number
   childrenFromIVF?: "yes" | "no"
   numberOfIVFChildren?: number
+  regularPeriods?: "yes" | "no"
+  menstrualCycleDays?: number
   createdAt: string
+}
+
+export interface CycleCosts {
+  cycleCost?: number
+  pgtCost?: number
+  medicationsCost?: number
+  storageCost?: number
+  insuranceCoverage?: number
 }
 
 export interface IVFCycle {
@@ -124,6 +134,7 @@ export interface IVFCycle {
   status: "active" | "completed" | "cancelled"
   days: CycleDay[]
   outcome?: CycleOutcome
+  costs?: CycleCosts
 }
 
 export interface EmbryoGrade {
@@ -192,6 +203,8 @@ export interface ProcedureRecord {
   clinicName?: string
   notes?: string
   results?: string
+  cost?: number
+  insuranceCoverage?: number
 }
 
 export interface NaturalPregnancy {

@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusCircle } from "lucide-react"
+import { PlusCircle, TrendingUp } from "lucide-react"
 import { CycleList } from "@/components/cycle-list"
 import { CycleCard } from "@/components/cycle-card"
 import { ProcedureCard } from "@/components/procedure-card"
@@ -35,37 +35,45 @@ export default function Home() {
 
   return (
     <div className="container max-w-4xl py-10">
-      <div className="mb-8">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">IVF Tracker</h1>
-            <p className="text-muted-foreground mt-1">Track your IVF journey, medications, and appointments</p>
-          </div>
-          
-          {/* Action buttons */}
-          <div className="flex flex-col sm:flex-row gap-2 sm:flex-shrink-0">
+      <div className="mb-8 space-y-6">
+        {/* Header section */}
+        <div className="text-center lg:text-left">
+          <h1 className="text-3xl font-bold tracking-tight">IVF Tracker</h1>
+          <p className="text-muted-foreground mt-1">Track your IVF journey, medications, and appointments</p>
+        </div>
+        
+        {/* Action buttons */}
+        <div className="flex justify-center">
+          <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-row gap-2 max-w-2xl lg:max-w-none">
+            {/* Show Journey Summary button only when there's data */}
+            {combinedItems.length > 0 && (
+              <Link href="/summary">
+                <Button 
+                  variant="outline" 
+                  className="flex items-center gap-2 w-full border-purple-200 text-purple-700 hover:bg-purple-50"
+                >
+                  <TrendingUp className="h-4 w-4" />
+                  Journey Summary
+                </Button>
+              </Link>
+            )}
+            
             <Link href="/cycles/new">
-              <Button className="flex items-center gap-2 w-full sm:w-auto">
+              <Button className="flex items-center gap-2 w-full">
                 <PlusCircle className="h-4 w-4" />
                 New Cycle
               </Button>
             </Link>
             
             <Link href="/procedures/new">
-              <Button 
-                variant="outline" 
-                className="flex items-center gap-2 w-full sm:w-auto"
-              >
+              <Button className="flex items-center gap-2 w-full">
                 <PlusCircle className="h-4 w-4" />
                 New Procedure
               </Button>
             </Link>
             
             <Link href="/pregnancies/new">
-              <Button 
-                variant="secondary" 
-                className="flex items-center gap-2 w-full sm:w-auto"
-              >
+              <Button className="flex items-center gap-2 w-full">
                 <PlusCircle className="h-4 w-4" />
                 Natural Pregnancy
               </Button>
@@ -77,6 +85,7 @@ export default function Home() {
       <div className="space-y-6">
         {/* About Me Card - Always show first */}
         <AboutMeCard />
+        
         
         {/* Cycles, Procedures, and Natural Pregnancies */}
         {combinedItems.length === 0 ? (

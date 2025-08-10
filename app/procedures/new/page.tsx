@@ -55,6 +55,8 @@ const formSchema = z.object({
   clinicName: z.string().optional(),
   notes: z.string().optional(),
   results: z.string().optional(),
+  cost: z.number().optional(),
+  insuranceCoverage: z.number().optional(),
 }).refine((data) => {
   if (data.procedureType === "Other" && !data.customProcedureName?.trim()) {
     return false
@@ -77,6 +79,8 @@ export default function NewProcedurePage() {
       customProcedureName: "",
       notes: "",
       results: "",
+      cost: undefined,
+      insuranceCoverage: undefined,
     },
   })
 
@@ -91,6 +95,8 @@ export default function NewProcedurePage() {
       clinicName: values.clinicName,
       notes: values.notes,
       results: values.results,
+      cost: values.cost,
+      insuranceCoverage: values.insuranceCoverage,
     }
 
     addProcedure(newProcedure)
@@ -238,6 +244,52 @@ export default function NewProcedurePage() {
                   </FormItem>
                 )}
               />
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField
+                  control={form.control}
+                  name="cost"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Cost</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormDescription>Total cost of the procedure (optional)</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="insuranceCoverage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Insurance Coverage</FormLabel>
+                      <FormControl>
+                        <Input 
+                          type="number"
+                          step="0.01"
+                          placeholder="0.00"
+                          {...field}
+                          onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                          value={field.value || ""}
+                        />
+                      </FormControl>
+                      <FormDescription>Amount covered by insurance (optional)</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
             <CardFooter className="flex justify-between">
               <Button variant="outline" type="button" onClick={() => router.push("/")}>
