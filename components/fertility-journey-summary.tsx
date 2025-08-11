@@ -15,6 +15,19 @@ export function FertilityJourneySummary() {
     const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval")
     const transferCycles = cycles.filter(c => c.cycleGoal === "transfer")
     
+    // Protocol summary - separated by retrieval vs transfer
+    const retrievalProtocols = retrievalCycles.reduce((acc, cycle) => {
+      const protocol = cycle.cycleType
+      acc[protocol] = (acc[protocol] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
+    const transferProtocols = transferCycles.reduce((acc, cycle) => {
+      const protocol = cycle.cycleType
+      acc[protocol] = (acc[protocol] || 0) + 1
+      return acc
+    }, {} as Record<string, number>)
+    
     // Timeline calculation
     const allDates = [
       ...cycles.map(c => parseISO(c.startDate)),
@@ -32,12 +45,12 @@ export function FertilityJourneySummary() {
       if (outcome) {
         acc.totalEggs += outcome.eggsRetrieved || 0
         acc.totalMatureEggs += outcome.matureEggs || 0
-        acc.totalFertilized += outcome.fertilizedEggs || 0
-        acc.totalEmbryos += outcome.totalEmbryos || 0
+        acc.totalFertilized += outcome.fertilized || 0
+        acc.totalEmbryos += outcome.day3Embryos || 0
         acc.totalBlastocysts += outcome.blastocysts || 0
-        acc.totalFrozenEmbryos += outcome.frozenEmbryos || 0
+        acc.totalFrozenEmbryos += outcome.frozen || 0
         acc.totalTested += outcome.embryosTested || 0
-        acc.totalNormal += outcome.normalEmbryos || 0
+        acc.totalNormal += outcome.euploidBlastocysts || 0
       }
       return acc
     }, {
@@ -118,6 +131,8 @@ export function FertilityJourneySummary() {
         totalInsurance: totalCosts.totalInsurance,
         netCost: totalCosts.totalSpent - totalCosts.totalInsurance
       },
+      retrievalProtocols: retrievalProtocols,
+      transferProtocols: transferProtocols,
       naturalPregnancies: naturalPregnancies.length
     }
   }, [cycles, procedures, naturalPregnancies])
@@ -175,7 +190,7 @@ export function FertilityJourneySummary() {
       </div>
 
       {/* Timeline & Overview */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium flex items-center gap-2">
@@ -193,20 +208,6 @@ export function FertilityJourneySummary() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium flex items-center gap-2">
-              <Activity className="h-4 w-4" />
-              Total Activities
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{journeyStats.timeline.totalActivities}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {journeyStats.cycles.total} cycles, {journeyStats.procedures.total} procedures
-            </p>
-          </CardContent>
-        </Card>
 
         <Card>
           <CardHeader className="pb-2">
@@ -252,7 +253,7 @@ export function FertilityJourneySummary() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
               <div className="space-y-2">
                 <div className="text-sm font-medium text-muted-foreground">Total Eggs Retrieved</div>
                 <div className="text-3xl font-bold">{journeyStats.retrievals.totalEggs}</div>
@@ -290,17 +291,23 @@ export function FertilityJourneySummary() {
                   </div>
                 )}
               </div>
+
+              <div className="space-y-2">
+                <div className="text-sm font-medium text-muted-foreground">Euploids</div>
+                <div className="text-3xl font-bold text-green-600">{journeyStats.retrievals.totalNormal}</div>
+                {journeyStats.retrievals.totalTested > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    {((journeyStats.retrievals.totalNormal / journeyStats.retrievals.totalTested) * 100).toFixed(1)}% euploid rate
+                  </div>
+                )}
+              </div>
             </div>
 
             {journeyStats.retrievals.totalTested > 0 && (
-              <div className="mt-6 grid gap-4 md:grid-cols-3">
+              <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-muted-foreground">PGT Tested</div>
                   <div className="text-2xl font-bold">{journeyStats.retrievals.totalTested}</div>
-                </div>
-                <div className="space-y-2">
-                  <div className="text-sm font-medium text-muted-foreground">Normal Embryos</div>
-                  <div className="text-2xl font-bold text-green-600">{journeyStats.retrievals.totalNormal}</div>
                 </div>
                 <div className="space-y-2">
                   <div className="text-sm font-medium text-muted-foreground">Frozen Embryos</div>
@@ -338,6 +345,32 @@ export function FertilityJourneySummary() {
                 </div>
               </div>
             )}
+
+            {/* Retrieval Protocols */}
+            {Object.keys(journeyStats.retrievalProtocols).length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Protocols Used</h4>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {Object.entries(journeyStats.retrievalProtocols)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([protocol, count]) => (
+                    <div key={protocol} className="flex justify-between items-center p-3 border rounded-lg">
+                      <span className="text-sm font-medium">{(() => {
+                        switch (protocol) {
+                          case "antagonist": return "Antagonist Protocol"
+                          case "long-lupron": return "Long Lupron Protocol"
+                          case "microdose-flare": return "Microdose Flare Protocol"
+                          case "mini-ivf": return "Mini-IVF Protocol"
+                          case "other": return "Other Protocol"
+                          default: return protocol
+                        }
+                      })()}</span>
+                      <Badge variant="outline" className="text-xs">{count} cycle{count !== 1 ? 's' : ''}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}
@@ -369,6 +402,32 @@ export function FertilityJourneySummary() {
                 <div className="text-3xl font-bold text-green-600">{journeyStats.transfers.liveBirths}</div>
               </div>
             </div>
+
+            {/* Transfer Protocols */}
+            {Object.keys(journeyStats.transferProtocols).length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-medium mb-3">Protocols Used</h4>
+                <div className="grid gap-2 md:grid-cols-2">
+                  {Object.entries(journeyStats.transferProtocols)
+                    .sort(([,a], [,b]) => b - a)
+                    .map(([protocol, count]) => (
+                    <div key={protocol} className="flex justify-between items-center p-3 border rounded-lg">
+                      <span className="text-sm font-medium">{(() => {
+                        switch (protocol) {
+                          case "fresh": return "Fresh Transfer"
+                          case "frozen-medicated": return "Frozen Transfer (Medicated)"
+                          case "frozen-modified-natural": return "Frozen Transfer (Modified Natural)"
+                          case "frozen-natural": return "Frozen Transfer (Natural)"
+                          case "other": return "Other Protocol"
+                          default: return protocol
+                        }
+                      })()}</span>
+                      <Badge variant="outline" className="text-xs">{count} cycle{count !== 1 ? 's' : ''}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

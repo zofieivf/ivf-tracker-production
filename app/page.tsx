@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { PlusCircle, TrendingUp } from "lucide-react"
+import { PlusCircle, TrendingUp, BarChart3 } from "lucide-react"
 import { CycleList } from "@/components/cycle-list"
 import { CycleCard } from "@/components/cycle-card"
 import { ProcedureCard } from "@/components/procedure-card"
@@ -45,19 +45,6 @@ export default function Home() {
         {/* Action buttons */}
         <div className="flex justify-center">
           <div className="flex flex-col sm:grid sm:grid-cols-2 lg:flex lg:flex-row gap-2 max-w-2xl lg:max-w-none">
-            {/* Show Journey Summary button only when there's data */}
-            {combinedItems.length > 0 && (
-              <Link href="/summary">
-                <Button 
-                  variant="outline" 
-                  className="flex items-center gap-2 w-full border-purple-200 text-purple-700 hover:bg-purple-50"
-                >
-                  <TrendingUp className="h-4 w-4" />
-                  Journey Summary
-                </Button>
-              </Link>
-            )}
-            
             <Link href="/cycles/new">
               <Button className="flex items-center gap-2 w-full">
                 <PlusCircle className="h-4 w-4" />
@@ -78,6 +65,33 @@ export default function Home() {
                 Natural Pregnancy
               </Button>
             </Link>
+            
+            {/* Show analysis buttons only when there's data */}
+            {combinedItems.length > 0 && (
+              <>
+                <Link href="/summary">
+                  <Button 
+                    variant="outline" 
+                    className="flex items-center gap-2 w-full border-purple-200 text-purple-700 hover:bg-purple-50"
+                  >
+                    <TrendingUp className="h-4 w-4" />
+                    Journey Summary
+                  </Button>
+                </Link>
+                
+                {cycles.length > 1 && (
+                  <Link href="/compare">
+                    <Button 
+                      variant="outline" 
+                      className="flex items-center gap-2 w-full border-blue-200 text-blue-700 hover:bg-blue-50"
+                    >
+                      <BarChart3 className="h-4 w-4" />
+                      Compare Cycles
+                    </Button>
+                  </Link>
+                )}
+              </>
+            )}
           </div>
         </div>
       </div>
