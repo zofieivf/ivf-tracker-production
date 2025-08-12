@@ -27,6 +27,17 @@ interface CycleChartsViewProps {
 export function CycleChartsView({ cycle }: CycleChartsViewProps) {
   const isTransferCycle = cycle.cycleGoal === "transfer"
   
+  // Helper to get cycle date range for better context
+  const getCycleDateRange = () => {
+    if (cycle.days.length === 0) return ""
+    const sortedDays = [...cycle.days].sort((a, b) => a.cycleDay - b.cycleDay)
+    const startDate = format(parseISO(sortedDays[0].date), "MMM d, yyyy")
+    const endDate = format(parseISO(sortedDays[sortedDays.length - 1].date), "MMM d, yyyy")
+    return startDate === endDate ? startDate : `${startDate} - ${endDate}`
+  }
+  
+  const dateRange = getCycleDateRange()
+  
   // For transfer cycles, show different content
   if (isTransferCycle) {
     // Process hormone data for transfer cycles (same logic as retrieval cycles)
@@ -38,7 +49,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
         .forEach((day) => {
           const dayData = {
             day: day.cycleDay,
-            date: format(parseISO(day.date), "MMM d"),
+            date: format(parseISO(day.date), "MMM d, yyyy"),
           }
 
           day.bloodwork?.forEach((result) => {
@@ -71,7 +82,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
         .filter((day) => day.follicleSizes?.liningThickness)
         .map((day) => ({
           day: day.cycleDay,
-          date: format(parseISO(day.date), "MMM d"),
+          date: format(parseISO(day.date), "MMM d, yyyy"),
           liningThickness: day.follicleSizes?.liningThickness || 0,
         }))
         .sort((a, b) => a.day - b.day)
@@ -114,7 +125,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Droplet className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>Estradiol (E2) Levels</CardTitle>
-                  <CardDescription>Estradiol hormone levels during transfer cycle</CardDescription>
+                  <CardDescription>Estradiol hormone levels during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -168,7 +179,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Droplet className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>Progesterone Levels</CardTitle>
-                  <CardDescription>Progesterone hormone levels during transfer cycle</CardDescription>
+                  <CardDescription>Progesterone hormone levels during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -222,7 +233,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Droplet className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>LH (Luteinizing Hormone) Levels</CardTitle>
-                  <CardDescription>LH hormone levels during transfer cycle</CardDescription>
+                  <CardDescription>LH hormone levels during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -276,7 +287,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Droplet className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>FSH (Follicle Stimulating Hormone) Levels</CardTitle>
-                  <CardDescription>FSH hormone levels during transfer cycle</CardDescription>
+                  <CardDescription>FSH hormone levels during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -330,7 +341,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Droplet className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>Beta HCG Levels Over Time</CardTitle>
-                  <CardDescription>Beta HCG hormone levels from bloodwork during transfer cycle</CardDescription>
+                  <CardDescription>Beta HCG hormone levels from bloodwork during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -385,7 +396,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 <Activity className="h-5 w-5 text-primary" />
                 <div>
                   <CardTitle>Endometrial Lining Thickness</CardTitle>
-                  <CardDescription>Endometrial lining measurements during transfer cycle</CardDescription>
+                  <CardDescription>Endometrial lining measurements during transfer cycle ({dateRange})</CardDescription>
                 </div>
               </div>
             </CardHeader>
@@ -535,7 +546,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
 
         return {
           day: day.cycleDay,
-          date: format(parseISO(day.date), "MMM d"),
+          date: format(parseISO(day.date), "MMM d, yyyy"),
           leftCount: leftFollicles.length,
           rightCount: rightFollicles.length,
           totalCount: allFollicles.length,
@@ -561,7 +572,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
       .forEach((day) => {
         const dayData = {
           day: day.cycleDay,
-          date: format(parseISO(day.date), "MMM d"),
+          date: format(parseISO(day.date), "MMM d, yyyy"),
         }
 
         day.bloodwork?.forEach((result) => {
@@ -595,7 +606,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     cycle.days
       .filter((day) => day.follicleSizes)
       .forEach((day) => {
-        const date = format(parseISO(day.date), "MMM d")
+        const date = format(parseISO(day.date), "MMM d, yyyy")
 
         day.follicleSizes?.left.forEach((size) => {
           scatterData.push({
@@ -796,7 +807,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Estradiol Levels</CardTitle>
-                <CardDescription>Estradiol (E2) hormone trends throughout the cycle</CardDescription>
+                <CardDescription>Estradiol (E2) hormone trends throughout the cycle ({dateRange}) ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -849,7 +860,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>LH Levels</CardTitle>
-                <CardDescription>Luteinizing Hormone trends throughout the cycle</CardDescription>
+                <CardDescription>Luteinizing Hormone trends throughout the cycle ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -902,7 +913,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>FSH Levels</CardTitle>
-                <CardDescription>Follicle Stimulating Hormone trends throughout the cycle</CardDescription>
+                <CardDescription>Follicle Stimulating Hormone trends throughout the cycle ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -955,7 +966,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Progesterone Levels</CardTitle>
-                <CardDescription>Progesterone hormone trends throughout the cycle</CardDescription>
+                <CardDescription>Progesterone hormone trends throughout the cycle ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -1008,7 +1019,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>hCG Levels</CardTitle>
-                <CardDescription>Beta hCG hormone trends throughout the cycle</CardDescription>
+                <CardDescription>Beta hCG hormone trends throughout the cycle ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -1063,7 +1074,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <TrendingUp className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Follicle Growth Trends</CardTitle>
-                <CardDescription>Average and maximum follicle sizes over time</CardDescription>
+                <CardDescription>Average and maximum follicle sizes over time ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -1128,7 +1139,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Droplet className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Follicle Count by Ovary</CardTitle>
-                <CardDescription>Number of follicles measured each day</CardDescription>
+                <CardDescription>Number of follicles measured each day ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -1174,7 +1185,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Endometrial Lining Thickness</CardTitle>
-                <CardDescription>Lining thickness measurements over time</CardDescription>
+                <CardDescription>Lining thickness measurements over time ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>

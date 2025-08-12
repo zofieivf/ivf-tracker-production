@@ -1,7 +1,7 @@
 "use client"
 
 import { useMemo } from "react"
-import { format, parseISO, differenceInDays } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -9,15 +9,12 @@ import {
   Calendar, 
   Pill, 
   Target, 
-  TrendingUp, 
-  Clock,
-  TestTube,
   Activity
 } from "lucide-react"
 import { useIVFStore } from "@/lib/store"
 import type { IVFCycle } from "@/lib/types"
 
-interface CycleComparisonViewProps {
+interface UnifiedCycleComparisonViewProps {
   cycles: IVFCycle[]
 }
 
@@ -40,108 +37,71 @@ interface CycleAnalysis {
   protocolDisplay: string
 }
 
-export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
-  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+export function UnifiedCycleComparisonView({ cycles }: UnifiedCycleComparisonViewProps) {
+  const { getUnifiedMedicationsForDay } = useIVFStore()
   
   const cycleAnalyses = useMemo(() => {
     return cycles.map(cycle => {
-      // Analyze medications for this cycle
+      // Analyze medications for this cycle using unified system
       const medicationMap = new Map<string, MedicationSummary>()
-      const schedule = getMedicationScheduleByCycleId(cycle.id)
       
       // Process all days in the cycle
       cycle.days.forEach(day => {
-        const dailyStatus = getDailyMedicationStatus(cycle.id, day.cycleDay)
+        // Use unified medication system - single source of truth
+        const unifiedMeds = getUnifiedMedicationsForDay(cycle.id, day.cycleDay)
         
         // Process scheduled medications
-        if (schedule) {
-          const todaysMedications = schedule.medications.filter(
-            med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
-          )
+        unifiedMeds.scheduled.forEach(item => {
+          const actualDosage = item.status.actualDosage || item.medication.dosage
+          const dosageNumber = parseFloat(actualDosage.replace(/[^\d.]/g, '')) || 0
           
-          todaysMedications.forEach(scheduledMed => {
-            const status = dailyStatus?.medications.find(m => m.scheduledMedicationId === scheduledMed.id)
-            const actualDosage = status?.actualDosage || scheduledMed.dosage
-            const dosageNumber = parseFloat(actualDosage.replace(/[^\d.]/g, '')) || 0
-            
-            if (!medicationMap.has(scheduledMed.name)) {
-              medicationMap.set(scheduledMed.name, {
-                name: scheduledMed.name,
-                totalUnits: 0,
-                daysUsed: 0,
-                firstDay: day.cycleDay,
-                lastDay: day.cycleDay,
-                dailyDosages: [],
-                averageDailyDose: 0,
-                maxDailyDose: 0
-              })
-            }
-            
-            const medSummary = medicationMap.get(scheduledMed.name)!
-            medSummary.totalUnits += dosageNumber
-            medSummary.daysUsed++
-            medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
-            medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
-            medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
-            medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
-          })
-        }
+          if (!medicationMap.has(item.medication.name)) {
+            medicationMap.set(item.medication.name, {
+              name: item.medication.name,
+              totalUnits: 0,
+              daysUsed: 0,
+              firstDay: day.cycleDay,
+              lastDay: day.cycleDay,
+              dailyDosages: [],
+              averageDailyDose: 0,
+              maxDailyDose: 0
+            })
+          }
+          
+          const medSummary = medicationMap.get(item.medication.name)!
+          medSummary.totalUnits += dosageNumber
+          medSummary.daysUsed++
+          medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
+          medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
+          medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
+          medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
+        })
         
         // Process day-specific medications
-        if (dailyStatus?.daySpecificMedications) {
-          dailyStatus.daySpecificMedications.forEach(dayMed => {
-            const dosageNumber = parseFloat(dayMed.dosage.replace(/[^\d.]/g, '')) || 0
-            
-            if (!medicationMap.has(dayMed.name)) {
-              medicationMap.set(dayMed.name, {
-                name: dayMed.name,
-                totalUnits: 0,
-                daysUsed: 0,
-                firstDay: day.cycleDay,
-                lastDay: day.cycleDay,
-                dailyDosages: [],
-                averageDailyDose: 0,
-                maxDailyDose: 0
-              })
-            }
-            
-            const medSummary = medicationMap.get(dayMed.name)!
-            medSummary.totalUnits += dosageNumber
-            medSummary.daysUsed++
-            medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
-            medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
-            medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
-            medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
-          })
-        }
-        
-        // Process legacy medications
-        if (!schedule && day.medications) {
-          day.medications.forEach(med => {
-            const dosageNumber = parseFloat((med.dosage || '').replace(/[^\d.]/g, '')) || 0
-            
-            if (!medicationMap.has(med.name)) {
-              medicationMap.set(med.name, {
-                name: med.name,
-                totalUnits: 0,
-                daysUsed: 0,
-                firstDay: day.cycleDay,
-                lastDay: day.cycleDay,
-                dailyDosages: [],
-                averageDailyDose: 0,
-                maxDailyDose: 0
-              })
-            }
-            
-            const medSummary = medicationMap.get(med.name)!
-            medSummary.totalUnits += dosageNumber
-            medSummary.daysUsed++
-            medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
-            medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
-            medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
-            medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
-          })
-        }
+        unifiedMeds.daySpecific.forEach(dayMed => {
+          const dosageNumber = parseFloat(dayMed.dosage.replace(/[^\d.]/g, '')) || 0
+          
+          if (!medicationMap.has(dayMed.name)) {
+            medicationMap.set(dayMed.name, {
+              name: dayMed.name,
+              totalUnits: 0,
+              daysUsed: 0,
+              firstDay: day.cycleDay,
+              lastDay: day.cycleDay,
+              dailyDosages: [],
+              averageDailyDose: 0,
+              maxDailyDose: 0
+            })
+          }
+          
+          const medSummary = medicationMap.get(dayMed.name)!
+          medSummary.totalUnits += dosageNumber
+          medSummary.daysUsed++
+          medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
+          medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
+          medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
+          medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
+        })
       })
       
       // Calculate averages and finalize medication summaries
@@ -179,7 +139,7 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
         protocolDisplay: getProtocolDisplay(cycle.cycleType)
       } as CycleAnalysis
     })
-  }, [cycles, getMedicationScheduleByCycleId, getDailyMedicationStatus])
+  }, [cycles, getUnifiedMedicationsForDay])
 
   return (
     <div className="space-y-6">
@@ -250,17 +210,14 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                         </td>
                       ))}
                     </tr>
-                    {/* Only show Stim Duration for retrieval cycles */}
-                    {cycleAnalyses.length > 0 && cycleAnalyses[0].cycle.cycleGoal === "retrieval" && (
-                      <tr className="border-b">
-                        <td className="py-3 px-4 font-medium">Stim Duration</td>
-                        {cycleAnalyses.map((analysis) => (
-                          <td key={analysis.cycle.id} className="py-3 px-4">
-                            {analysis.stimDuration > 0 ? `${analysis.stimDuration} days` : "N/A"}
-                          </td>
-                        ))}
-                      </tr>
-                    )}
+                    <tr className="border-b">
+                      <td className="py-3 px-4 font-medium">Stim Duration</td>
+                      {cycleAnalyses.map((analysis) => (
+                        <td key={analysis.cycle.id} className="py-3 px-4">
+                          {analysis.stimDuration > 0 ? `${analysis.stimDuration} days` : "N/A"}
+                        </td>
+                      ))}
+                    </tr>
                     <tr>
                       <td className="py-3 px-4 font-medium">Status</td>
                       {cycleAnalyses.map((analysis) => (
@@ -390,43 +347,38 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                         </td>
                       ))}
                     </tr>
-                    {/* Only show stim-related metrics for retrieval cycles */}
-                    {cycleAnalyses.length > 0 && cycleAnalyses[0].cycle.cycleGoal === "retrieval" && (
-                      <>
-                        <tr className="border-b">
-                          <td className="py-3 px-4 font-medium">First Stim Day</td>
-                          {cycleAnalyses.map((analysis) => (
-                            <td key={analysis.cycle.id} className="py-3 px-4">
-                              {analysis.medications.length > 0 
-                                ? `Day ${Math.min(...analysis.medications.map(m => m.firstDay))}`
-                                : "N/A"
-                              }
-                            </td>
-                          ))}
-                        </tr>
-                        <tr className="border-b">
-                          <td className="py-3 px-4 font-medium">Last Stim Day</td>
-                          {cycleAnalyses.map((analysis) => (
-                            <td key={analysis.cycle.id} className="py-3 px-4">
-                              {analysis.medications.length > 0 
-                                ? `Day ${Math.max(...analysis.medications.map(m => m.lastDay))}`
-                                : "N/A"
-                              }
-                            </td>
-                          ))}
-                        </tr>
-                        <tr>
-                          <td className="py-3 px-4 font-medium">Stim Duration</td>
-                          {cycleAnalyses.map((analysis) => (
-                            <td key={analysis.cycle.id} className="py-3 px-4">
-                              <Badge variant="outline">
-                                {analysis.stimDuration > 0 ? `${analysis.stimDuration} days` : "N/A"}
-                              </Badge>
-                            </td>
-                          ))}
-                        </tr>
-                      </>
-                    )}
+                    <tr className="border-b">
+                      <td className="py-3 px-4 font-medium">First Stim Day</td>
+                      {cycleAnalyses.map((analysis) => (
+                        <td key={analysis.cycle.id} className="py-3 px-4">
+                          {analysis.medications.length > 0 
+                            ? `Day ${Math.min(...analysis.medications.map(m => m.firstDay))}`
+                            : "N/A"
+                          }
+                        </td>
+                      ))}
+                    </tr>
+                    <tr className="border-b">
+                      <td className="py-3 px-4 font-medium">Last Stim Day</td>
+                      {cycleAnalyses.map((analysis) => (
+                        <td key={analysis.cycle.id} className="py-3 px-4">
+                          {analysis.medications.length > 0 
+                            ? `Day ${Math.max(...analysis.medications.map(m => m.lastDay))}`
+                            : "N/A"
+                          }
+                        </td>
+                      ))}
+                    </tr>
+                    <tr>
+                      <td className="py-3 px-4 font-medium">Stim Duration</td>
+                      {cycleAnalyses.map((analysis) => (
+                        <td key={analysis.cycle.id} className="py-3 px-4">
+                          <Badge variant="outline">
+                            {analysis.stimDuration > 0 ? `${analysis.stimDuration} days` : "N/A"}
+                          </Badge>
+                        </td>
+                      ))}
+                    </tr>
                   </tbody>
                 </table>
               </div>

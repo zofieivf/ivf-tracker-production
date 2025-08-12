@@ -14,17 +14,19 @@ import type { CycleDay } from "@/lib/types"
 
 export default function DayDetailPage({ params }: { params: { id: string; dayId: string } }) {
   const router = useRouter()
-  const { getCycleById, getMedicationScheduleByCycleId } = useIVFStore()
+  const { getCycleById, getMedicationScheduleByCycleId, ensureScheduledDaysExist } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === params.dayId))
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
+    // Ensure all days covered by medication schedule exist
+    ensureScheduledDaysExist(params.id)
     const currentCycle = getCycleById(params.id)
     setCycle(currentCycle)
     setDay(currentCycle?.days.find((d) => d.id === params.dayId))
-  }, [params.id, params.dayId, getCycleById])
+  }, [params.id, params.dayId, getCycleById, ensureScheduledDaysExist])
 
   // Navigation helpers
   const getNavigationInfo = () => {

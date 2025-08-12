@@ -1,14 +1,14 @@
 "use client"
 
 import { useMemo } from "react"
-import { format, parseISO, addDays } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Pill, Calendar, Clock, Snowflake, CheckCircle, XCircle, Minus } from "lucide-react"
 import { useIVFStore } from "@/lib/store"
 import type { IVFCycle } from "@/lib/types"
 
-interface CycleMedicationOverviewProps {
+interface UnifiedCycleMedicationOverviewProps {
   cycle: IVFCycle
 }
 
@@ -21,79 +21,54 @@ interface MedicationEntry {
   refrigerated: boolean
   taken?: boolean
   skipped?: boolean
-  source: "scheduled" | "day-specific" | "legacy"
+  source: "scheduled" | "day-specific"
   notes?: string
 }
 
-export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps) {
-  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+export function UnifiedCycleMedicationOverview({ cycle }: UnifiedCycleMedicationOverviewProps) {
+  const { getUnifiedMedicationsForDay } = useIVFStore()
   
   const { medicationData, groupedByDay } = useMemo(() => {
-    const schedule = getMedicationScheduleByCycleId(cycle.id)
     const allMedications: MedicationEntry[] = []
     
     // Get all cycle days sorted by day number
     const sortedDays = cycle.days.sort((a, b) => a.cycleDay - b.cycleDay)
     
     sortedDays.forEach(day => {
-      const dailyStatus = getDailyMedicationStatus(cycle.id, day.cycleDay)
+      // Use unified medication system - single source of truth
+      const unifiedMeds = getUnifiedMedicationsForDay(cycle.id, day.cycleDay)
       
-      // Add scheduled medications for this day
-      if (schedule) {
-        const todaysMedications = schedule.medications.filter(
-          med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
-        )
-        
-        todaysMedications.forEach(scheduledMed => {
-          const status = dailyStatus?.medications.find(m => m.scheduledMedicationId === scheduledMed.id)
-          
-          allMedications.push({
-            day: day.cycleDay,
-            date: day.date,
-            name: scheduledMed.name,
-            dosage: status?.actualDosage || scheduledMed.dosage,
-            time: `${scheduledMed.hour}:${scheduledMed.minute} ${scheduledMed.ampm}`,
-            refrigerated: scheduledMed.refrigerated,
-            taken: status?.taken,
-            skipped: status?.skipped,
-            source: "scheduled",
-            notes: scheduledMed.notes || status?.notes
-          })
+      // Add scheduled medications
+      unifiedMeds.scheduled.forEach(item => {
+        allMedications.push({
+          day: day.cycleDay,
+          date: day.date,
+          name: item.medication.name,
+          dosage: item.status.actualDosage || item.medication.dosage,
+          time: `${item.medication.hour}:${item.medication.minute} ${item.medication.ampm}`,
+          refrigerated: item.medication.refrigerated,
+          taken: item.status.taken,
+          skipped: item.status.skipped,
+          source: "scheduled",
+          notes: item.medication.notes || item.status.notes
         })
-        
-        // Add day-specific medications
-        if (dailyStatus?.daySpecificMedications) {
-          dailyStatus.daySpecificMedications.forEach(dayMed => {
-            allMedications.push({
-              day: day.cycleDay,
-              date: day.date,
-              name: dayMed.name,
-              dosage: dayMed.dosage,
-              time: `${dayMed.hour}:${dayMed.minute} ${dayMed.ampm}`,
-              refrigerated: dayMed.refrigerated,
-              taken: dayMed.taken,
-              skipped: dayMed.skipped,
-              source: "day-specific"
-            })
-          })
-        }
-      } else {
-        // Fallback to legacy medications if no schedule exists
-        if (day.medications) {
-          day.medications.forEach(med => {
-            allMedications.push({
-              day: day.cycleDay,
-              date: day.date,
-              name: med.name,
-              dosage: med.dosage || "",
-              time: med.hour && med.minute && med.ampm ? `${med.hour}:${med.minute} ${med.ampm}` : "",
-              refrigerated: med.refrigerated || false,
-              taken: med.taken,
-              source: "legacy"
-            })
-          })
-        }
-      }
+      })
+      
+      // Add day-specific medications
+      unifiedMeds.daySpecific.forEach(dayMed => {
+        allMedications.push({
+          day: day.cycleDay,
+          date: day.date,
+          name: dayMed.name,
+          dosage: dayMed.dosage,
+          time: `${dayMed.hour}:${dayMed.minute} ${dayMed.ampm}`,
+          refrigerated: dayMed.refrigerated,
+          taken: dayMed.taken,
+          skipped: dayMed.skipped,
+          source: "day-specific",
+          notes: dayMed.notes
+        })
+      })
     })
     
     const sortedMedications = allMedications.sort((a, b) => {
@@ -131,7 +106,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
       medicationData: sortedMedications,
       groupedByDay: Object.values(grouped).sort((a, b) => a.day - b.day)
     }
-  }, [cycle, getMedicationScheduleByCycleId, getDailyMedicationStatus])
+  }, [cycle, getUnifiedMedicationsForDay])
 
   // Group medications by name for the summary
   const medicationSummary = useMemo(() => {
@@ -179,9 +154,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
       case "scheduled":
         return <Badge variant="secondary" className="text-xs">Medication Schedule</Badge>
       case "day-specific":
-        return <Badge variant="outline" className="text-xs">Day-Specific</Badge>
-      case "legacy":
-        return <Badge variant="outline" className="text-xs">Manual Entry</Badge>
+        return <Badge variant="outline" className="text-xs border-orange-200 text-orange-700">Day-specific</Badge>
       default:
         return null
     }
@@ -214,7 +187,9 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-medium">{med.name}</h3>
-                    {Array.from(med.sources).map(source => getSourceBadge(source))}
+                    <div className="flex gap-1">
+                      {Array.from(med.sources).map(source => getSourceBadge(source))}
+                    </div>
                   </div>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-1">

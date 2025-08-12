@@ -2,13 +2,14 @@ export interface CycleDay {
   id: string
   date: string
   cycleDay: number
-  medications: Medication[]
+  // medications removed - now handled via dailyMedicationStatuses
   clinicVisit?: ClinicVisit
   follicleSizes?: FollicleMeasurement
   bloodwork?: BloodworkResult[]
   notes?: string
 }
 
+// Legacy interface - being phased out in favor of unified system
 export interface Medication {
   name: string
   dosage?: string

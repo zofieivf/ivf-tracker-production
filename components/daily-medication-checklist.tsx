@@ -48,6 +48,9 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
   const todaysMedications = schedule?.medications.filter(
     med => med.startDay <= cycleDay && med.endDay >= cycleDay
   ) || []
+  
+  // Get day-specific medications early to check for early return
+  const daySpecificMeds = dailyStatus?.daySpecificMedications || []
 
   // Initialize daily status if it doesn't exist
   useEffect(() => {
@@ -82,7 +85,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     )
   }
 
-  if (todaysMedications.length === 0) {
+  if (todaysMedications.length === 0 && daySpecificMeds.length === 0) {
     return (
       <Card>
         <CardHeader>
@@ -176,8 +179,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     })
   }
 
-  // Get day-specific medications
-  const daySpecificMeds = dailyStatus?.daySpecificMedications || []
 
   // Group scheduled medications by time period
   const morningScheduledMeds = todaysMedications.filter(med => med.ampm === "AM")

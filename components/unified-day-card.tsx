@@ -9,31 +9,19 @@ import { Pill, Droplet, Stethoscope, FileText, Plus } from "lucide-react"
 import { useIVFStore } from "@/lib/store"
 import type { CycleDay } from "@/lib/types"
 
-interface DayCardProps {
+interface UnifiedDayCardProps {
   day: CycleDay
   cycleId: string
   isPlaceholder?: boolean
 }
 
-export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
-  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+export function UnifiedDayCard({ day, cycleId, isPlaceholder = false }: UnifiedDayCardProps) {
+  const { getUnifiedMedicationsForDay } = useIVFStore()
   
-  // Check legacy medications
-  const hasLegacyMedications = day.medications && day.medications.length > 0
+  // Use unified medication system - single source of truth
+  const medications = getUnifiedMedicationsForDay(cycleId, day.cycleDay)
+  const hasMedications = medications.totalCount > 0
   
-  // Check new medication system
-  const schedule = getMedicationScheduleByCycleId(cycleId)
-  const dailyStatus = getDailyMedicationStatus(cycleId, day.cycleDay)
-  const scheduledMedications = schedule?.medications.filter(
-    med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
-  ) || []
-  const daySpecificMedications = dailyStatus?.daySpecificMedications || []
-  
-  const totalMedicationCount = (hasLegacyMedications ? day.medications.length : 0) + 
-                              scheduledMedications.length + 
-                              daySpecificMedications.length
-  
-  const hasMedications = hasLegacyMedications || totalMedicationCount > 0
   const hasClinicVisit = !!day.clinicVisit
   const hasFollicleSizes = !!day.follicleSizes
   const hasBloodwork = !!day.bloodwork && day.bloodwork.length > 0
@@ -58,8 +46,13 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
                 {keyDayType}
               </Badge>
             )}
-            <span className="text-sm text-muted-foreground">{format(parseISO(day.date), "EEE, MMM d")}</span>
+            <span className="text-sm text-muted-foreground">
+              {format(parseISO(day.date), "MMM d")}
+            </span>
           </div>
+          <span className="text-xs text-muted-foreground">
+            {format(parseISO(day.date), "EEEE")}
+          </span>
         </div>
 
         {hasData ? (
@@ -68,8 +61,14 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
               <div className="flex items-center gap-2">
                 <Pill className="h-4 w-4 text-primary" />
                 <span className="text-sm">
-                  {totalMedicationCount} medication{totalMedicationCount !== 1 ? "s" : ""}
+                  {medications.totalCount} medication{medications.totalCount !== 1 ? "s" : ""}
                 </span>
+                {/* Show breakdown of scheduled vs day-specific */}
+                {medications.scheduled.length > 0 && medications.daySpecific.length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    ({medications.scheduled.length} scheduled, {medications.daySpecific.length} day-specific)
+                  </span>
+                )}
               </div>
             )}
 
@@ -101,28 +100,45 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
             {hasNotes && (
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-primary" />
-                <span className="text-sm">Has notes</span>
+                <span className="text-sm">Notes</span>
               </div>
             )}
           </div>
         ) : (
-          <div className="py-2 text-center text-sm text-muted-foreground">
-            {isPlaceholder ? "No data for this day" : "No data added yet"}
+          <div className="text-center py-4">
+            <p className="text-sm text-muted-foreground mb-2">
+              {isPlaceholder ? `Day ${day.cycleDay}` : "No data recorded"}
+            </p>
+            {isPlaceholder && (
+              <p className="text-xs text-muted-foreground">
+                {format(parseISO(day.date), "EEEE, MMM d")}
+              </p>
+            )}
           </div>
         )}
       </CardContent>
 
-      <CardFooter className="border-t p-2">
-        {isPlaceholder ? (
-          <Button variant="ghost" className="w-full justify-center" asChild>
-            <Link href={`/cycles/${cycleId}/days/new?day=${day.cycleDay}&date=${day.date}`}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add data
+      <CardFooter className="p-3 pt-0 flex gap-2">
+        <Button asChild size="sm" variant={hasData ? "outline" : "default"} className="flex-1">
+          <Link href={`/cycles/${cycleId}/days/${day.id}`}>
+            {hasData ? "View Details" : "Add Data"}
+          </Link>
+        </Button>
+        
+        {hasData && (
+          <Button asChild size="sm" variant="ghost">
+            <Link href={`/cycles/${cycleId}/days/${day.id}/edit`}>
+              Edit
             </Link>
           </Button>
-        ) : (
-          <Button variant="ghost" className="w-full justify-center" asChild>
-            <Link href={`/cycles/${cycleId}/days/${day.id}`}>View details</Link>
+        )}
+        
+        {isPlaceholder && (
+          <Button asChild size="sm" variant="outline">
+            <Link href={`/cycles/${cycleId}/days/new?day=${day.cycleDay}&date=${day.date}`}>
+              <Plus className="h-4 w-4 mr-1" />
+              Add
+            </Link>
           </Button>
         )}
       </CardFooter>

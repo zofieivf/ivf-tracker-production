@@ -47,7 +47,8 @@ interface MedicationSchedulePageProps {
 
 const commonMedications = [
   "Gonal-F", "Menopur", "Cetrotide", "Lupron", "Estrace", "Progesterone",
-  "Follistim", "Ganirelix", "Ovidrel", "Pregnyl", "Crinone", "Endometrin"
+  "Follistim", "Ganirelix", "Ovidrel", "Pregnyl", "Crinone", "Endometrin", "Medrol",
+  "Estradiol", "Prometrium Inserts", "Progesterone in Oil (PIO)"
 ]
 
 const medicationTemplates = {

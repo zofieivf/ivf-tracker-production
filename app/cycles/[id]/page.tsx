@@ -30,7 +30,7 @@ import { CycleMedicationOverview } from "@/components/cycle-medication-overview"
 
 export default function CyclePage({ params }: { params: { id: string } }) {
   const router = useRouter()
-  const { getCycleById, cycles, deleteDay } = useIVFStore()
+  const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(params.id))
   const [mounted, setMounted] = useState(false)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
@@ -38,8 +38,10 @@ export default function CyclePage({ params }: { params: { id: string } }) {
 
   useEffect(() => {
     setMounted(true)
+    // Ensure all days covered by medication schedule exist
+    ensureScheduledDaysExist(params.id)
     setCycle(getCycleById(params.id))
-  }, [params.id, getCycleById, cycles]) // Add cycles to dependency array
+  }, [params.id, getCycleById, cycles, dailyMedicationStatuses, ensureScheduledDaysExist]) // Add dailyMedicationStatuses to dependency array
 
   const handleToggleDeleteMode = () => {
     setIsDeleteMode(!isDeleteMode)

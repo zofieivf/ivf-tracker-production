@@ -35,6 +35,10 @@ interface IVFStore {
   addDailyMedicationStatus: (status: DailyMedicationStatus) => void
   updateDailyMedicationStatus: (id: string, status: Partial<DailyMedicationStatus>) => void
   getDailyMedicationStatus: (cycleId: string, cycleDay: number) => DailyMedicationStatus | undefined
+  // Unified medication functions
+  getUnifiedMedicationsForDay: (cycleId: string, cycleDay: number) => import('./medication-utils').UnifiedDayMedications
+  ensureDailyMedicationStatus: (cycleId: string, cycleDay: number, date: string) => DailyMedicationStatus
+  ensureScheduledDaysExist: (cycleId: string) => void
   setUserProfile: (profile: UserProfile) => void
   updateUserProfile: (profile: Partial<UserProfile>) => void
 }
@@ -234,6 +238,81 @@ export const useIVFStore = create<IVFStore>()(
         return get().dailyMedicationStatuses.find((status) => 
           status.cycleId === cycleId && status.cycleDay === cycleDay
         )
+      },
+
+      // Unified medication functions
+      getUnifiedMedicationsForDay: (cycleId, cycleDay) => {
+        const state = get()
+        const schedule = state.medicationSchedules.find(s => s.cycleId === cycleId)
+        const dailyStatus = state.dailyMedicationStatuses.find(
+          status => status.cycleId === cycleId && status.cycleDay === cycleDay
+        )
+        
+        // Import the utility function dynamically to avoid circular imports
+        const { getUnifiedMedicationsForDay } = require('./medication-utils')
+        return getUnifiedMedicationsForDay(cycleId, cycleDay, schedule || null, dailyStatus || null)
+      },
+
+      ensureDailyMedicationStatus: (cycleId, cycleDay, date) => {
+        const state = get()
+        let existingStatus = state.dailyMedicationStatuses.find(
+          status => status.cycleId === cycleId && status.cycleDay === cycleDay
+        )
+        
+        if (!existingStatus) {
+          const { createEmptyDailyStatus } = require('./medication-utils')
+          existingStatus = createEmptyDailyStatus(cycleId, cycleDay, date)
+          set((state) => ({
+            dailyMedicationStatuses: [...state.dailyMedicationStatuses, existingStatus!]
+          }))
+        }
+        
+        return existingStatus
+      },
+
+      ensureScheduledDaysExist: (cycleId) => {
+        const state = get()
+        const cycle = state.cycles.find(c => c.id === cycleId)
+        const schedule = state.medicationSchedules.find(s => s.cycleId === cycleId)
+        
+        if (!cycle || !schedule) return
+        
+        // Find the range of days needed by the medication schedule
+        const maxScheduledDay = Math.max(...schedule.medications.map(m => m.endDay))
+        const existingDays = cycle.days.map(d => d.cycleDay)
+        const maxExistingDay = existingDays.length > 0 ? Math.max(...existingDays) : 0
+        
+        if (maxScheduledDay <= maxExistingDay) return // No new days needed
+        
+        // Calculate dates for new days
+        const { addDays, parseISO } = require('date-fns')
+        const cycleStartDate = parseISO(cycle.startDate)
+        const newDays: CycleDay[] = []
+        
+        for (let dayNumber = maxExistingDay + 1; dayNumber <= maxScheduledDay; dayNumber++) {
+          const dayDate = addDays(cycleStartDate, dayNumber - 1)
+          const newDay: CycleDay = {
+            id: crypto.randomUUID(),
+            cycleDay: dayNumber,
+            date: dayDate.toISOString(),
+          }
+          newDays.push(newDay)
+        }
+        
+        // Add the new days to the cycle
+        if (newDays.length > 0) {
+          set((state) => ({
+            cycles: state.cycles.map((c) => {
+              if (c.id === cycleId) {
+                return {
+                  ...c,
+                  days: [...c.days, ...newDays].sort((a, b) => a.cycleDay - b.cycleDay),
+                }
+              }
+              return c
+            }),
+          }))
+        }
       },
     }),
     {
