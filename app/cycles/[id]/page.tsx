@@ -1,9 +1,9 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, differenceInDays } from "date-fns"
 import { ArrowLeft, Calendar, Edit, Plus, User, Target, Trash2, Pill } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -27,11 +27,13 @@ import { CycleOutcomeCard } from "@/components/cycle-outcome-card"
 import { CycleChartsView } from "@/components/cycle-charts-view"
 import { CycleCostsView } from "@/components/cycle-costs-view"
 import { CycleMedicationOverview } from "@/components/cycle-medication-overview"
+import { CycleCalendarView } from "@/components/cycle-calendar-view"
 
-export default function CyclePage({ params }: { params: { id: string } }) {
+export default function CyclePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
-  const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist } = useIVFStore()
-  const [cycle, setCycle] = useState(getCycleById(params.id))
+  const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist } = useIVFStore()
+  const [cycle, setCycle] = useState(getCycleById(id))
   const [mounted, setMounted] = useState(false)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
@@ -39,9 +41,11 @@ export default function CyclePage({ params }: { params: { id: string } }) {
   useEffect(() => {
     setMounted(true)
     // Ensure all days covered by medication schedule exist
-    ensureScheduledDaysExist(params.id)
-    setCycle(getCycleById(params.id))
-  }, [params.id, getCycleById, cycles, dailyMedicationStatuses, ensureScheduledDaysExist]) // Add dailyMedicationStatuses to dependency array
+    ensureScheduledDaysExist(id)
+    // Ensure all days exist (fill any gaps for manually created days beyond end date)
+    ensureAllDaysExist(id)
+    setCycle(getCycleById(id))
+  }, [id, getCycleById, cycles, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist]) // Add dailyMedicationStatuses to dependency array
 
   const handleToggleDeleteMode = () => {
     setIsDeleteMode(!isDeleteMode)
@@ -64,7 +68,7 @@ export default function CyclePage({ params }: { params: { id: string } }) {
     selectedDays.forEach(dayId => {
       // Skip placeholder days - they don't exist in the actual data
       if (!dayId.startsWith('placeholder-')) {
-        deleteDay(cycle.id, dayId)
+        deleteDay(id, dayId)
       }
     })
     
@@ -175,13 +179,13 @@ export default function CyclePage({ params }: { params: { id: string } }) {
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
             <Button asChild variant="outline">
-              <Link href={`/cycles/${cycle.id}/medication-schedule`}>
+              <Link href={`/cycles/${id}/medication-schedule`}>
                 <Pill className="h-4 w-4 mr-2" />
                 Medication Schedule
               </Link>
             </Button>
             <Button asChild>
-              <Link href={`/cycles/${cycle.id}/edit`}>
+              <Link href={`/cycles/${id}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit Cycle
               </Link>
@@ -269,7 +273,7 @@ export default function CyclePage({ params }: { params: { id: string } }) {
                       Delete Days
                     </Button>
                     <Button asChild>
-                      <Link href={`/cycles/${cycle.id}/days/new?day=${cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1}&date=${(() => {
+                      <Link href={`/cycles/${id}/days/new?day=${cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1}&date=${(() => {
                         const nextDay = cycle.days?.length ? Math.max(...cycle.days.map(d => d.cycleDay)) + 1 : 1;
                         const startDate = new Date(cycle.startDate);
                         const dayDate = new Date(startDate);
@@ -286,57 +290,12 @@ export default function CyclePage({ params }: { params: { id: string } }) {
             </div>
 
             {cycle.days && cycle.days.length > 0 ? (
-              <div className="grid gap-4">
-                {(() => {
-                  // Get existing days sorted by cycle day number
-                  const existingDays = cycle.days.sort((a, b) => a.cycleDay - b.cycleDay)
-                  const maxDay = existingDays.length > 0 ? Math.max(...existingDays.map(d => d.cycleDay)) : 0
-                  const allDays = []
-
-                  // Create array of all days from 1 to maxDay
-                  for (let dayNum = 1; dayNum <= maxDay; dayNum++) {
-                    const existingDay = existingDays.find(d => d.cycleDay === dayNum)
-                    if (existingDay) {
-                      allDays.push({ type: 'existing', day: existingDay })
-                    } else {
-                      // Create placeholder day
-                      const startDate = new Date(cycle.startDate)
-                      const dayDate = new Date(startDate)
-                      dayDate.setDate(startDate.getDate() + (dayNum - 1))
-                      
-                      const placeholderDay = {
-                        id: `placeholder-${dayNum}`,
-                        date: dayDate.toISOString(),
-                        cycleDay: dayNum,
-                        medications: [],
-                        notes: ''
-                      }
-                      allDays.push({ type: 'placeholder', day: placeholderDay })
-                    }
-                  }
-
-                  return allDays.map(({ type, day }) => (
-                    <div key={day.id} className={`relative ${isDeleteMode ? 'ring-2 ring-muted rounded-lg p-1' : ''}`}>
-                      {isDeleteMode && (
-                        <div className="absolute top-3 left-3 z-10">
-                          <Checkbox
-                            checked={selectedDays.has(day.id)}
-                            onCheckedChange={(checked) => handleDaySelection(day.id, !!checked)}
-                            className="bg-white border-2 shadow-sm"
-                          />
-                        </div>
-                      )}
-                      <div className={isDeleteMode ? 'ml-8' : ''}>
-                        <DayCard 
-                          day={day} 
-                          cycleId={cycle.id} 
-                          isPlaceholder={type === 'placeholder'}
-                        />
-                      </div>
-                    </div>
-                  ))
-                })()}
-              </div>
+              <CycleCalendarView 
+                cycle={cycle}
+                isDeleteMode={isDeleteMode}
+                selectedDays={selectedDays}
+                onToggleDay={(dayId) => handleDaySelection(dayId, !selectedDays.has(dayId))}
+              />
             ) : (
               <Card>
                 <CardContent className="flex flex-col items-center justify-center py-10">
@@ -346,7 +305,7 @@ export default function CyclePage({ params }: { params: { id: string } }) {
                     Start tracking your daily medications, appointments, and measurements
                   </p>
                   <Button asChild>
-                    <Link href={`/cycles/${cycle.id}/days/new?day=1&date=${cycle.startDate}`}>
+                    <Link href={`/cycles/${id}/days/new?day=1&date=${cycle.startDate}`}>
                       <Plus className="h-4 w-4 mr-2" />
                       Add First Day
                     </Link>

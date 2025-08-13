@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, use } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -19,6 +19,7 @@ import type { MedicationSchedule, ScheduledMedication } from "@/lib/types"
 
 const medicationSchema = z.object({
   name: z.string().min(1, "Medication name is required"),
+  customName: z.string().optional(),
   dosage: z.string().min(1, "Dosage is required"),
   hour: z.string().min(1, "Hour is required"),
   minute: z.string().min(1, "Minute is required"),
@@ -27,6 +28,15 @@ const medicationSchema = z.object({
   startDay: z.number().min(1, "Start day must be at least 1").optional(),
   endDay: z.number().min(1, "End day must be at least 1").optional(),
   notes: z.string().optional(),
+}).refine((data) => {
+  // If "custom" is selected, customName must be provided
+  if (data.name === "custom" && !data.customName?.trim()) {
+    return false
+  }
+  return true
+}, {
+  message: "Custom medication name is required",
+  path: ["customName"]
 }).refine((data) => {
   if (data.startDay && data.endDay) {
     return data.endDay >= data.startDay
@@ -42,7 +52,7 @@ const scheduleSchema = z.object({
 })
 
 interface MedicationSchedulePageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
 }
 
 const commonMedications = [
@@ -53,29 +63,29 @@ const commonMedications = [
 
 const medicationTemplates = {
   "antagonist": [
-    { name: "Gonal-F", dosage: "150 IU", time: "8:00 PM", refrigerated: true },
-    { name: "Menopur", dosage: "75 IU", time: "8:00 PM", refrigerated: false },
-    { name: "Cetrotide", dosage: "250mcg", time: "9:00 AM", refrigerated: true }
+    { name: "Gonal-F", dosage: "", time: "8:00 PM", refrigerated: true },
+    { name: "Menopur", dosage: "", time: "8:00 PM", refrigerated: false },
+    { name: "Cetrotide", dosage: "", time: "8:00 PM", refrigerated: true }
   ],
   "lupron": [
-    { name: "Lupron", dosage: "10 units", time: "7:00 AM", refrigerated: true },
-    { name: "Gonal-F", dosage: "225 IU", time: "8:00 PM", refrigerated: true },
-    { name: "Menopur", dosage: "150 IU", time: "8:00 PM", refrigerated: true }
+    { name: "Lupron", dosage: "", time: "8:00 PM", refrigerated: true }
   ],
   "transfer": [
-    { name: "Estrace", dosage: "2mg", time: "8:00 AM", refrigerated: false },
-    { name: "Estrace", dosage: "2mg", time: "8:00 PM", refrigerated: false },
-    { name: "Progesterone", dosage: "1ml", time: "9:00 PM", refrigerated: false }
+    { name: "Medrol", dosage: "", time: "8:00 PM", refrigerated: false },
+    { name: "Estradiol", dosage: "", time: "8:00 PM", refrigerated: false },
+    { name: "Prometrium Inserts", dosage: "", time: "8:00 PM", refrigerated: false },
+    { name: "Progesterone in Oil (PIO)", dosage: "", time: "8:00 PM", refrigerated: false }
   ]
 }
 
 export default function MedicationSchedulePage({ params }: MedicationSchedulePageProps) {
+  const { id } = use(params)
   const router = useRouter()
   const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   
-  const cycle = getCycleById(params.id)
-  const existingSchedule = getMedicationScheduleByCycleId(params.id)
+  const cycle = getCycleById(id)
+  const existingSchedule = getMedicationScheduleByCycleId(id)
 
   // Helper function to calculate actual date from cycle day
   const getActualDate = (cycleDay: number | undefined) => {
@@ -84,20 +94,38 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     return addDays(cycleStartDate, cycleDay - 1)
   }
   
+  // Transform existing medications to handle custom medications properly
+  const transformedMedications = existingSchedule?.medications?.map(med => {
+    const isCustom = !commonMedications.includes(med.name)
+    return {
+      name: isCustom ? "custom" : med.name,
+      customName: isCustom ? med.name : "",
+      dosage: med.dosage,
+      hour: med.hour,
+      minute: med.minute,
+      ampm: med.ampm,
+      refrigerated: med.refrigerated,
+      startDay: med.startDay,
+      endDay: med.endDay,
+      notes: med.notes || ""
+    }
+  }) || [{
+    name: "",
+    customName: "",
+    dosage: "",
+    hour: "8",
+    minute: "00",
+    ampm: "PM",
+    refrigerated: false,
+    startDay: undefined,
+    endDay: undefined,
+    notes: ""
+  }]
+
   const form = useForm<z.infer<typeof scheduleSchema>>({
     resolver: zodResolver(scheduleSchema),
     defaultValues: {
-      medications: existingSchedule?.medications || [{
-        name: "",
-        dosage: "",
-        hour: "8",
-        minute: "00",
-        ampm: "PM",
-        refrigerated: false,
-        startDay: undefined,
-        endDay: undefined,
-        notes: ""
-      }],
+      medications: transformedMedications,
     },
   })
 
@@ -113,6 +141,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
   const addMedication = () => {
     append({
       name: "",
+      customName: "",
       dosage: "",
       hour: "8",
       minute: "00",
@@ -132,6 +161,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       
       return {
         name: med.name,
+        customName: "",
         dosage: med.dosage,
         hour: hour,
         minute: minute.replace(/[^\d]/g, ""),
@@ -160,7 +190,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     const scheduledMedications: ScheduledMedication[] = values.medications
       .map((med, index) => ({
         id: crypto.randomUUID(),
-        name: med.name,
+        name: med.name === "custom" ? med.customName || "" : med.name,
         dosage: med.dosage,
         hour: med.hour,
         minute: med.minute,
@@ -173,7 +203,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
 
     const scheduleData: MedicationSchedule = {
       id: existingSchedule?.id || crypto.randomUUID(),
-      cycleId: params.id,
+      cycleId: id,
       medications: scheduledMedications,
       createdAt: existingSchedule?.createdAt || new Date().toISOString(),
     }
@@ -188,13 +218,13 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     }
 
     setIsSubmitting(false)
-    router.push(`/cycles/${params.id}`)
+    router.push(`/cycles/${id}`)
   }
 
   return (
     <div className="container max-w-4xl py-10">
       <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.push(`/cycles/${params.id}`)} className="mb-4">
+        <Button variant="ghost" onClick={() => router.push(`/cycles/${id}`)} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back to Cycle
         </Button>
@@ -309,17 +339,30 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                                 <SelectItem value="custom">Custom medication...</SelectItem>
                               </SelectContent>
                             </Select>
-                            {field.value === "custom" && (
-                              <Input
-                                placeholder="Enter medication name"
-                                onChange={(e) => field.onChange(e.target.value)}
-                                className="mt-2"
-                              />
-                            )}
                             <FormMessage />
                           </FormItem>
                         )}
                       />
+
+                      {/* Custom Medication Name */}
+                      {form.watch(`medications.${index}.name`) === "custom" && (
+                        <FormField
+                          control={form.control}
+                          name={`medications.${index}.customName`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Custom Medication Name</FormLabel>
+                              <FormControl>
+                                <Input 
+                                  placeholder="Enter medication name" 
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      )}
 
                       {/* Dosage */}
                       <FormField
@@ -515,7 +558,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => router.push(`/cycles/${params.id}`)}
+                  onClick={() => router.push(`/cycles/${id}`)}
                 >
                   Cancel
                 </Button>

@@ -214,7 +214,9 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
                 <div key={index} className="p-4 border rounded-lg">
                   <div className="flex items-start justify-between mb-2">
                     <h3 className="font-medium">{med.name}</h3>
-                    {Array.from(med.sources).map(source => getSourceBadge(source))}
+                    {Array.from(med.sources).map((source, index) => (
+                      <div key={index}>{getSourceBadge(source)}</div>
+                    ))}
                   </div>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-1">
@@ -245,71 +247,95 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
             Medication Timeline
           </CardTitle>
           <CardDescription>
-            Day-by-day medication schedule with status tracking
+            Compact view of all medications by day with status tracking
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {groupedByDay.length > 0 ? (
-            <div className="space-y-4">
-              {groupedByDay.map((dayGroup) => {
-                // Check if this day has a key clinic visit
-                const cycleDay = cycle.days.find(d => d.cycleDay === dayGroup.day)
-                const isKeyDay = cycleDay?.clinicVisit?.type === "retrieval" || cycleDay?.clinicVisit?.type === "transfer"
-                const keyDayType = cycleDay?.clinicVisit?.type === "retrieval" ? "Egg Retrieval" : 
-                                  cycleDay?.clinicVisit?.type === "transfer" ? "Transfer" : null
-                
-                return (
-                <div key={dayGroup.day} className={`p-4 border rounded-lg ${isKeyDay ? "ring-2 ring-blue-500 bg-blue-50/30" : ""}`}>
-                  {/* Day Header */}
-                  <div className="flex items-center gap-2 mb-3 pb-2 border-b">
-                    <div className="font-medium text-lg">Day {dayGroup.day}</div>
-                    {keyDayType && (
-                      <Badge variant="default" className="bg-blue-600 hover:bg-blue-700 text-white">
-                        {keyDayType}
-                      </Badge>
-                    )}
-                    <div className="text-sm text-muted-foreground">
-                      {format(parseISO(dayGroup.date), "EEEE, MMMM d, yyyy")}
-                    </div>
-                  </div>
-                  
-                  {/* Medications for this day */}
-                  <div className="space-y-2">
-                    {dayGroup.medications.map((med, medIndex) => (
-                      <div key={medIndex} className="flex items-center justify-between py-2">
-                        <div className="flex items-center gap-3">
+          {medicationData.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 font-medium">Day</th>
+                    <th className="text-left py-2 font-medium">Date</th>
+                    <th className="text-left py-2 font-medium">Medication</th>
+                    <th className="text-left py-2 font-medium">Dosage</th>
+                    <th className="text-left py-2 font-medium">Time</th>
+                    <th className="text-left py-2 font-medium">Status</th>
+                    <th className="text-left py-2 font-medium">Notes</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {medicationData.map((med, index) => {
+                    // Get clinic visit info for this day
+                    const cycleDay = cycle.days.find(d => d.cycleDay === med.day)
+                    const getClinicVisitStyling = () => {
+                      if (!cycleDay?.clinicVisit) return { isClinicDay: false, rowClass: '' }
+                      
+                      switch (cycleDay.clinicVisit.type) {
+                        case "retrieval":
+                          return { isClinicDay: true, rowClass: 'bg-purple-50/50' }
+                        case "transfer":
+                          return { isClinicDay: true, rowClass: 'bg-pink-50/50' }
+                        case "baseline":
+                          return { isClinicDay: true, rowClass: 'bg-blue-50/50' }
+                        case "monitoring":
+                          return { isClinicDay: true, rowClass: 'bg-green-50/50' }
+                        case "other":
+                          return { isClinicDay: true, rowClass: 'bg-orange-50/50' }
+                        default:
+                          return { isClinicDay: true, rowClass: 'bg-gray-50/50' }
+                      }
+                    }
+                    
+                    const clinicVisitInfo = getClinicVisitStyling()
+                    const prevMed = index > 0 ? medicationData[index - 1] : null
+                    const isNewDay = !prevMed || prevMed.day !== med.day
+                    
+                    return (
+                      <tr key={index} className={`border-b hover:bg-muted/30 ${clinicVisitInfo.rowClass} ${isNewDay ? 'border-t-2' : ''}`}>
+                        <td className="py-2">
+                          {isNewDay && (
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium">Day {med.day}</span>
+                              {clinicVisitInfo.isClinicDay && (
+                                <Badge variant="outline" className="text-xs px-1 py-0">
+                                  {cycleDay?.clinicVisit?.type}
+                                </Badge>
+                              )}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-2 text-muted-foreground">
+                          {isNewDay && format(parseISO(med.date), "MMM d")}
+                        </td>
+                        <td className="py-2">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{med.name}</span>
                             {med.refrigerated && <Snowflake className="h-3 w-3 text-blue-500" />}
                             {getSourceBadge(med.source)}
                           </div>
-                          
-                          <div className="text-sm text-muted-foreground">
-                            {med.dosage}
-                          </div>
-                          
+                        </td>
+                        <td className="py-2 text-muted-foreground">{med.dosage}</td>
+                        <td className="py-2 text-muted-foreground">
                           {med.time && (
-                            <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1">
                               <Clock className="h-3 w-3" />
                               {med.time}
                             </div>
                           )}
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
+                        </td>
+                        <td className="py-2">
                           {getStatusIcon(med.taken, med.skipped)}
-                          {med.notes && (
-                            <div className="text-xs text-muted-foreground max-w-32 truncate" title={med.notes}>
-                              {med.notes}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-                )
-              })}
+                        </td>
+                        <td className="py-2 text-muted-foreground text-xs max-w-32 truncate" title={med.notes}>
+                          {med.notes}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           ) : (
             <p className="text-muted-foreground">No medications recorded for this cycle</p>

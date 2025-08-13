@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { z } from "zod"
@@ -63,18 +63,28 @@ const formSchema = z.object({
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
   }),
+}).refine((data) => {
+  // Validate that end date is not before start date
+  if (data.endDate && data.startDate) {
+    return data.endDate >= data.startDate
+  }
+  return true
+}, {
+  message: "End date cannot be before start date",
+  path: ["endDate"]
 })
 
-export default function EditCyclePage({ params }: { params: { id: string } }) {
+export default function EditCyclePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
   const { getCycleById, updateCycle, deleteCycle, cycles } = useIVFStore()
-  const [cycle, setCycle] = useState(getCycleById(params.id))
+  const resolvedParams = use(params)
+  const [cycle, setCycle] = useState(getCycleById(resolvedParams.id))
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    setCycle(getCycleById(params.id))
-  }, [params.id, getCycleById])
+    setCycle(getCycleById(resolvedParams.id))
+  }, [resolvedParams.id, getCycleById])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -98,7 +108,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
   const watchedNumberOfEmbryos = form.watch("numberOfEmbryos")
 
   // Get retrieval cycles for dropdown
-  const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval" && c.id !== params.id)
+  const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval" && c.id !== resolvedParams.id)
 
   const calculateAge = () => {
     if (watchedStartDate && watchedDateOfBirth) {
@@ -166,7 +176,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
   }, [watchedCycleGoal, form])
 
   const handleDeleteCycle = () => {
-    deleteCycle(params.id)
+    deleteCycle(resolvedParams.id)
     router.push("/")
   }
 
@@ -229,22 +239,22 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
 
       console.log('Updating cycle with new days:', updatedDays)
       
-      updateCycle(params.id, {
+      updateCycle(resolvedParams.id, {
         ...updatedCycle,
         days: updatedDays
       })
     } else {
       console.log('No start date change or no days to update')
-      updateCycle(params.id, updatedCycle)
+      updateCycle(resolvedParams.id, updatedCycle)
     }
 
-    router.push(`/cycles/${params.id}`)
+    router.push(`/cycles/${resolvedParams.id}`)
   }
 
   return (
     <div className="container max-w-lg py-10">
       <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
-        <Link href={`/cycles/${params.id}`} className="flex items-center gap-1">
+        <Link href={`/cycles/${resolvedParams.id}`} className="flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back to cycle
         </Link>
@@ -615,7 +625,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
                           </FormControl>
                           <SelectContent>
                             {retrievalCycles.length === 0 ? (
-                              <SelectItem value="" disabled>No retrieval cycles found</SelectItem>
+                              <SelectItem value="no-cycles" disabled>No retrieval cycles found</SelectItem>
                             ) : (
                               retrievalCycles.map((cycle) => (
                                 <SelectItem key={cycle.id} value={cycle.id}>
@@ -661,7 +671,7 @@ export default function EditCyclePage({ params }: { params: { id: string } }) {
             </CardContent>
             <CardFooter className="flex justify-between">
               <div className="flex gap-2">
-                <Button variant="outline" type="button" onClick={() => router.push(`/cycles/${params.id}`)}>
+                <Button variant="outline" type="button" onClick={() => router.push(`/cycles/${resolvedParams.id}`)}>
                   Cancel
                 </Button>
                 

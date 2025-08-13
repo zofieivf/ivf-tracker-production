@@ -99,9 +99,13 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
             )}
 
             {hasNotes && (
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-primary" />
-                <span className="text-sm">Has notes</span>
+              <div className="flex items-start gap-2">
+                <FileText className="h-4 w-4 text-primary mt-0.5 flex-shrink-0" />
+                <div className="flex-1">
+                  <p className="text-sm text-muted-foreground overflow-hidden" style={{display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical'}}>
+                    {day.notes}
+                  </p>
+                </div>
               </div>
             )}
           </div>

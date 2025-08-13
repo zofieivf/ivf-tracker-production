@@ -6,12 +6,14 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Checkbox } from "@/components/ui/checkbox"
+import { ChevronDown, ChevronRight } from "lucide-react"
 import type { IVFCycle, EmbryoGrade } from "@/lib/types"
 import { useIVFStore } from "@/lib/store"
 import { v4 as uuidv4 } from "uuid"
@@ -21,36 +23,60 @@ const retrievalFormSchema = z.object({
   eggsRetrieved: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Eggs retrieved cannot be negative"
+    }),
   matureEggs: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Mature eggs cannot be negative"
+    }),
   fertilizationMethod: z.enum(["IVF", "ICSI"]).optional(),
   fertilized: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Fertilized cannot be negative"
+    }),
   day3Embryos: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Day 3 embryos cannot be negative"
+    }),
   blastocysts: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Blastocysts cannot be negative"
+    }),
   euploidBlastocysts: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Euploid blastocysts cannot be negative"
+    }),
   frozen: z
     .string() 
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Frozen cannot be negative"
+    }),
   embryosAvailableForTransfer: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Embryos available for transfer cannot be negative"
+    }),
 })
 
 // Schema for transfer cycles
@@ -58,19 +84,31 @@ const transferFormSchema = z.object({
   betaHcg1: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Beta HCG 1 cannot be negative"
+    }),
   betaHcg1Day: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Beta HCG 1 day cannot be negative"
+    }),
   betaHcg2: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Beta HCG 2 cannot be negative"
+    }),
   betaHcg2Day: z
     .string()
     .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined)),
+    .transform((val) => (val ? Number.parseInt(val) : undefined))
+    .refine((val) => val === undefined || val >= 0, {
+      message: "Beta HCG 2 day cannot be negative"
+    }),
   transferStatus: z.enum(["successful", "not-successful"]).optional(),
   liveBirth: z.enum(["yes", "no"]).optional(),
 })
@@ -84,6 +122,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const { updateCycleOutcome, cycles } = useIVFStore()
   const [isEditing, setIsEditing] = useState(!cycle.outcome)
   const [embryoGrades, setEmbryoGrades] = useState<EmbryoGrade[]>(cycle.outcome?.day3EmbryoGrades || [])
+  const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   
   const isTransferCycle = cycle.cycleGoal === "transfer"
   
@@ -184,6 +223,16 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
         embryo.id === id ? { ...embryo, [field]: value } : embryo
       )
     )
+  }
+
+  const toggleRowExpansion = (embryoId: string) => {
+    const newExpanded = new Set(expandedRows)
+    if (newExpanded.has(embryoId)) {
+      newExpanded.delete(embryoId)
+    } else {
+      newExpanded.add(embryoId)
+    }
+    setExpandedRows(newExpanded)
   }
 
 
@@ -383,19 +432,155 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {cycle.outcome.day3EmbryoGrades.map((embryo, index) => (
-                      <TableRow key={embryo.id}>
-                        <TableCell>Embryo {index + 1}</TableCell>
-                        <TableCell className="font-medium">{embryo.day3Grade || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.day5Grade || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.day6Grade || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.day7Grade || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.pgtA || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.sex || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.pgtM || "-"}</TableCell>
-                        <TableCell className="font-medium">{embryo.pgtSR || "-"}</TableCell>
-                      </TableRow>
-                    ))}
+                    {cycle.outcome.day3EmbryoGrades.map((embryo, index) => {
+                      const hasDetails = embryo.pgtADetails || embryo.pgtMDetails || embryo.pgtSRDetails
+                      
+                      return (
+                        <>
+                          <TableRow key={embryo.id}>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                {hasDetails && (
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleRowExpansion(embryo.id)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    {expandedRows.has(embryo.id) ? (
+                                      <ChevronDown className="h-3 w-3" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                )}
+                                Embryo {index + 1}
+                              </div>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {embryo.day3Grade ? (
+                                <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded text-sm font-mono">
+                                  {embryo.day3Grade}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {embryo.day5Grade ? (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm font-mono">
+                                  {embryo.day5Grade}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {embryo.day6Grade ? (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm font-mono">
+                                  {embryo.day6Grade}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {embryo.day7Grade ? (
+                                <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded text-sm font-mono">
+                                  {embryo.day7Grade}
+                                </span>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">
+                              {embryo.pgtA ? (
+                                <Badge 
+                                  variant="outline" 
+                                  className={`${
+                                    embryo.pgtA === 'Euploid' ? 'border-green-500 text-green-700 bg-green-50' :
+                                    embryo.pgtA === 'Mosaic' ? 'border-yellow-500 text-yellow-700 bg-yellow-50' :
+                                    'border-red-500 text-red-700 bg-red-50'
+                                  }`}
+                                >
+                                  {embryo.pgtA}
+                                </Badge>
+                              ) : (
+                                "-"
+                              )}
+                            </TableCell>
+                            <TableCell className="font-medium">{embryo.sex || "-"}</TableCell>
+                            <TableCell className="font-medium">{embryo.pgtM || "-"}</TableCell>
+                            <TableCell className="font-medium">{embryo.pgtSR || "-"}</TableCell>
+                          </TableRow>
+                          
+                          {/* Expanded Detail Row for readonly view */}
+                          {hasDetails && expandedRows.has(embryo.id) && (
+                            <TableRow key={`${embryo.id}-details`} className="bg-gradient-to-r from-blue-50/50 to-purple-50/50 border-l-4 border-l-blue-400">
+                              <TableCell colSpan={9} className="p-0">
+                                <div className="py-4 px-6 space-y-4">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                                    <h4 className="text-sm font-semibold text-blue-900">Detailed Genetic Analysis</h4>
+                                  </div>
+                                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    {embryo.pgtADetails && (
+                                      <div className="bg-white rounded-lg p-4 shadow-sm border border-green-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Badge className="bg-green-100 text-green-800 border-green-300">PGT-A</Badge>
+                                          <span className="text-xs text-green-600 font-medium">Chromosome Analysis</span>
+                                        </div>
+                                        <div className="bg-green-50 rounded-md p-3 border border-green-200">
+                                          <p className="text-sm font-mono text-green-900">
+                                            {embryo.pgtADetails}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-green-600 mt-2 font-medium">
+                                          Specific chromosome anomalies detected
+                                        </p>
+                                      </div>
+                                    )}
+                                    {embryo.pgtMDetails && (
+                                      <div className="bg-white rounded-lg p-4 shadow-sm border border-purple-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Badge className="bg-purple-100 text-purple-800 border-purple-300">PGT-M</Badge>
+                                          <span className="text-xs text-purple-600 font-medium">Mutation Analysis</span>
+                                        </div>
+                                        <div className="bg-purple-50 rounded-md p-3 border border-purple-200">
+                                          <p className="text-sm font-mono text-purple-900">
+                                            {embryo.pgtMDetails}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-purple-600 mt-2 font-medium">
+                                          Specific mutations tested
+                                        </p>
+                                      </div>
+                                    )}
+                                    {embryo.pgtSRDetails && (
+                                      <div className="bg-white rounded-lg p-4 shadow-sm border border-orange-200">
+                                        <div className="flex items-center gap-2 mb-3">
+                                          <Badge className="bg-orange-100 text-orange-800 border-orange-300">PGT-SR</Badge>
+                                          <span className="text-xs text-orange-600 font-medium">Structural Analysis</span>
+                                        </div>
+                                        <div className="bg-orange-50 rounded-md p-3 border border-orange-200">
+                                          <p className="text-sm font-mono text-orange-900">
+                                            {embryo.pgtSRDetails}
+                                          </p>
+                                        </div>
+                                        <p className="text-xs text-orange-600 mt-2 font-medium">
+                                          Structural rearrangements detected
+                                        </p>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                        </>
+                      )
+                    })}
                   </TableBody>
                 </Table>
               </div>
@@ -458,7 +643,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Beta HCG 1 Value</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Enter value in mIU/mL" {...field} />
+                          <Input type="number" min="0" placeholder="Enter value in mIU/mL" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -500,7 +685,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                       <FormItem className="md:col-span-2">
                         <FormLabel>Beta HCG 2 Value</FormLabel>
                         <FormControl>
-                          <Input type="number" placeholder="Enter value in mIU/mL" {...field} />
+                          <Input type="number" min="0" placeholder="Enter value in mIU/mL" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -565,7 +750,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                     <FormItem>
                       <FormLabel>Eggs Retrieved</FormLabel>
                       <FormControl>
-                        <Input type="number" {...field} />
+                        <Input type="number" min="0" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -579,7 +764,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Mature Eggs</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -615,7 +800,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Fertilized</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -629,7 +814,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Day 3 Embryos</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -644,7 +829,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Day 5/6/7 Blastocysts</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -658,7 +843,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Frozen</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -672,7 +857,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Number of Euploid Blastocysts</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -686,7 +871,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   <FormItem>
                     <FormLabel>Number of Embryos Available for Transfer</FormLabel>
                     <FormControl>
-                      <Input type="number" {...field} />
+                      <Input type="number" min="0" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -714,88 +899,157 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                       </TableHeader>
                       <TableBody>
                         {embryoGrades.map((embryo, index) => (
-                          <TableRow key={embryo.id}>
-                            <TableCell>Embryo {index + 1}</TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.day3Grade || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "day3Grade", e.target.value)}
-                                placeholder="Grade"
-                                className="w-20"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.day5Grade || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "day5Grade", e.target.value)}
-                                placeholder="Grade"
-                                className="w-20"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.day6Grade || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "day6Grade", e.target.value)}
-                                placeholder="Grade"
-                                className="w-20"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.day7Grade || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "day7Grade", e.target.value)}
-                                placeholder="Grade"
-                                className="w-20"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
-                                <Select
-                                  value={embryo.pgtA || ""}
-                                  onValueChange={(value) => updateEmbryoField(embryo.id, "pgtA", value)}
-                                >
-                                  <SelectTrigger className="w-28">
-                                    <SelectValue placeholder="Select" />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="Euploid">Euploid</SelectItem>
-                                    <SelectItem value="Mosaic">Mosaic</SelectItem>
-                                    <SelectItem value="Aneuploid">Aneuploid</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
+                          <>
+                            <TableRow key={embryo.id}>
+                              <TableCell>
+                                <div className="flex items-center gap-2">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => toggleRowExpansion(embryo.id)}
+                                    className="h-6 w-6 p-0"
+                                  >
+                                    {expandedRows.has(embryo.id) ? (
+                                      <ChevronDown className="h-3 w-3" />
+                                    ) : (
+                                      <ChevronRight className="h-3 w-3" />
+                                    )}
+                                  </Button>
+                                  Embryo {index + 1}
+                                </div>
+                              </TableCell>
+                              <TableCell>
                                 <Input
-                                  value={embryo.sex || ""}
-                                  onChange={(e) => updateEmbryoField(embryo.id, "sex", e.target.value)}
-                                  placeholder="M/F"
-                                  className="w-16"
+                                  value={embryo.day3Grade || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "day3Grade", e.target.value)}
+                                  placeholder="Grade"
+                                  className="w-20"
                                 />
-                              ) : (
-                                <span className="text-muted-foreground text-sm">-</span>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.pgtM || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "pgtM", e.target.value)}
-                                placeholder="Result"
-                                className="w-24"
-                              />
-                            </TableCell>
-                            <TableCell>
-                              <Input
-                                value={embryo.pgtSR || ""}
-                                onChange={(e) => updateEmbryoField(embryo.id, "pgtSR", e.target.value)}
-                                placeholder="Result"
-                                className="w-24"
-                              />
-                            </TableCell>
-                          </TableRow>
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={embryo.day5Grade || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "day5Grade", e.target.value)}
+                                  placeholder="Grade"
+                                  className="w-20"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={embryo.day6Grade || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "day6Grade", e.target.value)}
+                                  placeholder="Grade"
+                                  className="w-20"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={embryo.day7Grade || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "day7Grade", e.target.value)}
+                                  placeholder="Grade"
+                                  className="w-20"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
+                                  <Select
+                                    value={embryo.pgtA || ""}
+                                    onValueChange={(value) => updateEmbryoField(embryo.id, "pgtA", value)}
+                                  >
+                                    <SelectTrigger className="w-28">
+                                      <SelectValue placeholder="Select" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <SelectItem value="Euploid">Euploid</SelectItem>
+                                      <SelectItem value="Mosaic">Mosaic</SelectItem>
+                                      <SelectItem value="Aneuploid">Aneuploid</SelectItem>
+                                    </SelectContent>
+                                  </Select>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {(embryo.day5Grade || embryo.day6Grade || embryo.day7Grade) ? (
+                                  <Input
+                                    value={embryo.sex || ""}
+                                    onChange={(e) => updateEmbryoField(embryo.id, "sex", e.target.value)}
+                                    placeholder="M/F"
+                                    className="w-16"
+                                  />
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={embryo.pgtM || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "pgtM", e.target.value)}
+                                  placeholder="Result"
+                                  className="w-24"
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Input
+                                  value={embryo.pgtSR || ""}
+                                  onChange={(e) => updateEmbryoField(embryo.id, "pgtSR", e.target.value)}
+                                  placeholder="Result"
+                                  className="w-24"
+                                />
+                              </TableCell>
+                            </TableRow>
+                            
+                            {/* Expanded Detail Row */}
+                            {expandedRows.has(embryo.id) && (
+                              <TableRow key={`${embryo.id}-details`} className="bg-muted/30">
+                                <TableCell></TableCell>
+                                <TableCell colSpan={8}>
+                                  <div className="py-2 space-y-3">
+                                    <h4 className="text-sm font-medium text-muted-foreground">Detailed PGT Results</h4>
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                      <div>
+                                        <label className="text-xs font-medium text-muted-foreground">PGT-A Details</label>
+                                        <Input
+                                          value={embryo.pgtADetails || ""}
+                                          onChange={(e) => updateEmbryoField(embryo.id, "pgtADetails", e.target.value)}
+                                          placeholder="e.g., +21, -16, mosaic 45,X/46,XX"
+                                          className="mt-1 text-xs"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Specific chromosome anomalies
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-medium text-muted-foreground">PGT-M Details</label>
+                                        <Input
+                                          value={embryo.pgtMDetails || ""}
+                                          onChange={(e) => updateEmbryoField(embryo.id, "pgtMDetails", e.target.value)}
+                                          placeholder="e.g., BRCA1 negative, CF mutation detected"
+                                          className="mt-1 text-xs"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Specific mutations tested
+                                        </p>
+                                      </div>
+                                      <div>
+                                        <label className="text-xs font-medium text-muted-foreground">PGT-SR Details</label>
+                                        <Input
+                                          value={embryo.pgtSRDetails || ""}
+                                          onChange={(e) => updateEmbryoField(embryo.id, "pgtSRDetails", e.target.value)}
+                                          placeholder="e.g., balanced translocation t(11;22)"
+                                          className="mt-1 text-xs"
+                                        />
+                                        <p className="text-xs text-muted-foreground mt-1">
+                                          Structural rearrangements
+                                        </p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            )}
+                          </>
                         ))}
                       </TableBody>
                     </Table>

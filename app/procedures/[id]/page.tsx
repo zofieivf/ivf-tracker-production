@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
@@ -21,16 +21,17 @@ import {
 } from "@/components/ui/alert-dialog"
 import { useIVFStore } from "@/lib/store"
 
-export default function ProcedurePage({ params }: { params: { id: string } }) {
+export default function ProcedurePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const { getProcedureById, procedures, deleteProcedure } = useIVFStore()
-  const [procedure, setProcedure] = useState(getProcedureById(params.id))
+  const [procedure, setProcedure] = useState(getProcedureById(id))
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    setProcedure(getProcedureById(params.id))
-  }, [params.id, getProcedureById, procedures])
+    setProcedure(getProcedureById(id))
+  }, [id, getProcedureById, procedures])
 
   const handleDelete = () => {
     if (procedure) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
@@ -12,21 +12,22 @@ import { useIVFStore } from "@/lib/store"
 import { DailyMedicationChecklist } from "@/components/daily-medication-checklist"
 import type { CycleDay } from "@/lib/types"
 
-export default function DayDetailPage({ params }: { params: { id: string; dayId: string } }) {
+export default function DayDetailPage({ params }: { params: Promise<{ id: string; dayId: string }> }) {
+  const { id, dayId } = use(params)
   const router = useRouter()
   const { getCycleById, getMedicationScheduleByCycleId, ensureScheduledDaysExist } = useIVFStore()
-  const [cycle, setCycle] = useState(getCycleById(params.id))
-  const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === params.dayId))
+  const [cycle, setCycle] = useState(getCycleById(id))
+  const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === dayId))
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
     // Ensure all days covered by medication schedule exist
-    ensureScheduledDaysExist(params.id)
-    const currentCycle = getCycleById(params.id)
+    ensureScheduledDaysExist(id)
+    const currentCycle = getCycleById(id)
     setCycle(currentCycle)
-    setDay(currentCycle?.days.find((d) => d.id === params.dayId))
-  }, [params.id, params.dayId, getCycleById, ensureScheduledDaysExist])
+    setDay(currentCycle?.days.find((d) => d.id === dayId))
+  }, [id, dayId, getCycleById, ensureScheduledDaysExist])
 
   // Navigation helpers
   const getNavigationInfo = () => {
@@ -52,7 +53,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
           <h2 className="text-2xl font-bold mb-2">Day not found</h2>
           <p className="text-muted-foreground mb-6">The day you're looking for doesn't exist</p>
           <Button asChild>
-            <Link href={`/cycles/${params.id}`}>Go back to cycle</Link>
+            <Link href={`/cycles/${id}`}>Go back to cycle</Link>
           </Button>
         </div>
       </div>
@@ -63,7 +64,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
   return (
     <div className="container max-w-4xl py-10">
       <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
-        <Link href={`/cycles/${params.id}`} className="flex items-center gap-1">
+        <Link href={`/cycles/${id}`} className="flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back to cycle
         </Link>
@@ -84,7 +85,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
           {/* Previous Day Button */}
           {prevDay ? (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/cycles/${params.id}/days/${prevDay.id}`}>
+              <Link href={`/cycles/${id}/days/${prevDay.id}`}>
                 <ChevronLeft className="h-4 w-4 mr-2" />
                 Day {prevDay.cycleDay}
               </Link>
@@ -99,7 +100,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
           {/* Next Day Button */}
           {nextDay ? (
             <Button asChild variant="outline" size="sm">
-              <Link href={`/cycles/${params.id}/days/${nextDay.id}`}>
+              <Link href={`/cycles/${id}/days/${nextDay.id}`}>
                 Day {nextDay.cycleDay}
                 <ChevronRight className="h-4 w-4 ml-2" />
               </Link>
@@ -113,7 +114,7 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
 
           {/* Edit Day Button */}
           <Button asChild variant="outline" size="sm">
-            <Link href={`/cycles/${params.id}/days/${params.dayId}/edit`}>
+            <Link href={`/cycles/${id}/days/${dayId}/edit`}>
               <Edit className="h-4 w-4 mr-2" />
               Edit Day
             </Link>
@@ -124,14 +125,14 @@ export default function DayDetailPage({ params }: { params: { id: string; dayId:
       <div className="space-y-6">
         {/* Medication Checklist */}
         <DailyMedicationChecklist 
-          cycleId={params.id} 
+          cycleId={id} 
           cycleDay={day.cycleDay} 
           date={day.date} 
         />
 
         <div className="grid gap-6 md:grid-cols-2">
         {/* Only show old medications if no medication schedule exists */}
-        {day.medications && day.medications.length > 0 && !getMedicationScheduleByCycleId(params.id) && (
+        {day.medications && day.medications.length > 0 && !getMedicationScheduleByCycleId(id) && (
           <Card>
             <CardHeader className="pb-3">
               <div className="flex items-center gap-2">

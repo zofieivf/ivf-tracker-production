@@ -39,6 +39,7 @@ interface IVFStore {
   getUnifiedMedicationsForDay: (cycleId: string, cycleDay: number) => import('./medication-utils').UnifiedDayMedications
   ensureDailyMedicationStatus: (cycleId: string, cycleDay: number, date: string) => DailyMedicationStatus
   ensureScheduledDaysExist: (cycleId: string) => void
+  ensureAllDaysExist: (cycleId: string) => void
   setUserProfile: (profile: UserProfile) => void
   updateUserProfile: (profile: Partial<UserProfile>) => void
 }
@@ -278,6 +279,7 @@ export const useIVFStore = create<IVFStore>()(
         if (!cycle || !schedule) return
         
         // Find the range of days needed by the medication schedule
+        // Medications take priority - create days for all scheduled medications
         const maxScheduledDay = Math.max(...schedule.medications.map(m => m.endDay))
         const existingDays = cycle.days.map(d => d.cycleDay)
         const maxExistingDay = existingDays.length > 0 ? Math.max(...existingDays) : 0
@@ -300,6 +302,49 @@ export const useIVFStore = create<IVFStore>()(
         }
         
         // Add the new days to the cycle
+        if (newDays.length > 0) {
+          set((state) => ({
+            cycles: state.cycles.map((c) => {
+              if (c.id === cycleId) {
+                return {
+                  ...c,
+                  days: [...c.days, ...newDays].sort((a, b) => a.cycleDay - b.cycleDay),
+                }
+              }
+              return c
+            }),
+          }))
+        }
+      },
+
+      ensureAllDaysExist: (cycleId) => {
+        const state = get()
+        const cycle = state.cycles.find(c => c.id === cycleId)
+        
+        if (!cycle || !cycle.days || cycle.days.length === 0) return
+        
+        // Find the highest day number that exists (from any source: medication schedule or manual creation)
+        const existingDays = cycle.days.map(d => d.cycleDay)
+        const maxDayNumber = Math.max(...existingDays)
+        const { addDays, parseISO } = require('date-fns')
+        const cycleStartDate = parseISO(cycle.startDate)
+        const newDays: CycleDay[] = []
+        
+        // Create any missing days from 1 to maxDayNumber (fill gaps)
+        for (let dayNumber = 1; dayNumber <= maxDayNumber; dayNumber++) {
+          const dayExists = existingDays.includes(dayNumber)
+          if (!dayExists) {
+            const dayDate = addDays(cycleStartDate, dayNumber - 1)
+            const newDay: CycleDay = {
+              id: crypto.randomUUID(),
+              cycleDay: dayNumber,
+              date: dayDate.toISOString(),
+            }
+            newDays.push(newDay)
+          }
+        }
+        
+        // Add any missing days to the cycle
         if (newDays.length > 0) {
           set((state) => ({
             cycles: state.cycles.map((c) => {

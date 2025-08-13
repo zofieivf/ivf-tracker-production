@@ -1,13 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, CalendarIcon } from "lucide-react"
+import { ArrowLeft, CalendarIcon, Trash2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -68,16 +68,17 @@ const formSchema = z.object({
   path: ["customProcedureName"]
 })
 
-export default function EditProcedurePage({ params }: { params: { id: string } }) {
+export default function EditProcedurePage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter()
-  const { getProcedureById, updateProcedure, procedures } = useIVFStore()
-  const [procedure, setProcedure] = useState(getProcedureById(params.id))
+  const { getProcedureById, updateProcedure, deleteProcedure, procedures } = useIVFStore()
+  const resolvedParams = use(params)
+  const [procedure, setProcedure] = useState(getProcedureById(resolvedParams.id))
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
     setMounted(true)
-    setProcedure(getProcedureById(params.id))
-  }, [params.id, getProcedureById, procedures])
+    setProcedure(getProcedureById(resolvedParams.id))
+  }, [resolvedParams.id, getProcedureById, procedures])
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -127,6 +128,15 @@ export default function EditProcedurePage({ params }: { params: { id: string } }
 
     updateProcedure(procedure.id, updatedProcedure)
     router.push(`/procedures/${procedure.id}`)
+  }
+
+  function handleDelete() {
+    if (!procedure) return
+    
+    if (confirm("Are you sure you want to delete this procedure? This action cannot be undone.")) {
+      deleteProcedure(procedure.id)
+      router.push("/")
+    }
   }
 
   if (!mounted) return null
@@ -333,9 +343,15 @@ export default function EditProcedurePage({ params }: { params: { id: string } }
               </div>
             </CardContent>
             <CardFooter className="flex justify-between">
-              <Button variant="outline" type="button" onClick={() => router.push(`/procedures/${procedure.id}`)}>
-                Cancel
-              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" type="button" onClick={() => router.push(`/procedures/${procedure.id}`)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" type="button" onClick={handleDelete}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete Procedure
+                </Button>
+              </div>
               <Button type="submit">Save Changes</Button>
             </CardFooter>
           </form>

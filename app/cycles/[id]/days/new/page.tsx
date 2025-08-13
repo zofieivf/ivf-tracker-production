@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState } from "react"
+import React, { useState, use } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { z } from "zod"
@@ -69,14 +69,15 @@ const formSchema = z.object({
   notes: z.string().optional(),
 })
 
-export default function NewDayPage({ params }: { params: { id: string } }) {
+export default function NewDayPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
   const router = useRouter()
   const searchParams = useSearchParams()
   const dayNumber = searchParams.get("day")
   const dateString = searchParams.get("date")
 
   const { getCycleById, addDay } = useIVFStore()
-  const cycle = getCycleById(params.id)
+  const cycle = getCycleById(id)
 
   const [medications, setMedications] = useState<
     { id: string; name: string; dosage?: string; hour?: string; minute?: string; ampm?: string; taken: boolean; refrigerated?: boolean }[]
@@ -196,14 +197,14 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
       notes: values.notes,
     }
 
-    addDay(params.id, newDay)
-    router.push(`/cycles/${params.id}`)
+    addDay(id, newDay)
+    router.push(`/cycles/${id}`)
   }
 
   return (
     <div className="container max-w-2xl py-10">
       <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
-        <Link href={`/cycles/${params.id}`} className="flex items-center gap-1">
+        <Link href={`/cycles/${id}`} className="flex items-center gap-1">
           <ArrowLeft className="h-4 w-4" />
           Back to cycle
         </Link>
@@ -647,7 +648,7 @@ export default function NewDayPage({ params }: { params: { id: string } }) {
             </Tabs>
 
             <CardFooter className="flex justify-between border-t p-6">
-              <Button type="button" variant="outline" onClick={() => router.push(`/cycles/${params.id}`)}>
+              <Button type="button" variant="outline" onClick={() => router.push(`/cycles/${id}`)}>
                 Cancel
               </Button>
               <Button type="submit">Save Day</Button>

@@ -52,6 +52,15 @@ const formSchema = z.object({
   status: z.enum(["active", "completed", "cancelled"], {
     required_error: "Status is required",
   }),
+}).refine((data) => {
+  // Validate that end date is not before start date
+  if (data.endDate && data.startDate) {
+    return data.endDate >= data.startDate
+  }
+  return true
+}, {
+  message: "End date cannot be before start date",
+  path: ["endDate"]
 })
 
 export default function NewCyclePage() {
@@ -551,7 +560,7 @@ export default function NewCyclePage() {
                           </FormControl>
                           <SelectContent>
                             {retrievalCycles.length === 0 ? (
-                              <SelectItem value="" disabled>No retrieval cycles found</SelectItem>
+                              <SelectItem value="no-cycles" disabled>No retrieval cycles found</SelectItem>
                             ) : (
                               retrievalCycles.map((cycle) => (
                                 <SelectItem key={cycle.id} value={cycle.id}>

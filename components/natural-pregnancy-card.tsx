@@ -94,8 +94,10 @@ export function NaturalPregnancyCard({ pregnancy }: NaturalPregnancyCardProps) {
           </div>
           <div className="flex items-center gap-2">
             <Badge className={statusBadge.class}>{statusBadge.text}</Badge>
-            <Button variant="ghost" size="sm">
-              <Edit className="h-4 w-4" />
+            <Button variant="ghost" size="sm" asChild>
+              <Link href={`/pregnancies/${pregnancy.id}/edit`}>
+                <Edit className="h-4 w-4" />
+              </Link>
             </Button>
           </div>
         </div>

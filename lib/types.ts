@@ -145,9 +145,12 @@ export interface EmbryoGrade {
   day6Grade?: string
   day7Grade?: string
   pgtA?: "Euploid" | "Mosaic" | "Aneuploid"
+  pgtADetails?: string // For specific chromosome anomalies (e.g., "+21", "-16", "mosaic 45,X/46,XX")
   sex?: string
   pgtM?: string
+  pgtMDetails?: string // For specific mutations detected/not detected
   pgtSR?: string
+  pgtSRDetails?: string // For specific structural rearrangements
 }
 
 export interface CycleOutcome {
