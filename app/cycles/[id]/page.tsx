@@ -111,12 +111,31 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
         return "Egg Retrieval"
       case "transfer":
         return "Embryo Transfer"
+      case "iui":
+        return "IUI (Intrauterine Insemination)"
       default:
         return goal
     }
   }
 
-  const getCycleTypeDisplay = (type: string) => {
+  const getCycleTypeDisplay = (type: string, goal?: string) => {
+    if (goal === "iui") {
+      switch (type) {
+        case "antagonist":
+          return "Letrozole/Clomid + Trigger"
+        case "long-lupron":
+          return "Injectable Gonadotropins"
+        case "microdose-flare":
+          return "Natural Cycle"
+        case "mini-ivf":
+          return "Clomid Only"
+        case "other":
+          return "Other Protocol"
+        default:
+          return type
+      }
+    }
+    
     switch (type) {
       case "antagonist":
         return "Antagonist Protocol"
@@ -200,7 +219,7 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
               <CardTitle className="text-sm font-medium">Cycle Type</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-2xl font-bold">{getCycleTypeDisplay(cycle.cycleType)}</p>
+              <p className="text-2xl font-bold">{getCycleTypeDisplay(cycle.cycleType, cycle.cycleGoal)}</p>
             </CardContent>
           </Card>
           <Card>

@@ -116,6 +116,13 @@ export function CycleCalendarView({
             badgeColor: 'bg-blue-600 text-white',
             displayName: 'BET'
           }
+        case "iui":
+          return { 
+            isClinicDay: true, 
+            styling: 'ring-2 ring-purple-500 bg-purple-50/50', 
+            badgeColor: 'bg-purple-600 text-white',
+            displayName: 'IUI'
+          }
         case "other":
           return { 
             isClinicDay: true, 

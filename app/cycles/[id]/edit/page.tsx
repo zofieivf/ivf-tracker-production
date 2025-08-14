@@ -47,7 +47,7 @@ const formSchema = z.object({
   cycleType: z.enum(["antagonist", "long-lupron", "microdose-flare", "mini-ivf", "other", "fresh", "frozen-medicated", "frozen-modified-natural", "frozen-natural"], {
     required_error: "Cycle type is required",
   }),
-  cycleGoal: z.enum(["retrieval", "transfer"], {
+  cycleGoal: z.enum(["retrieval", "transfer", "iui"], {
     required_error: "Cycle goal is required",
   }),
   donorEggs: z.enum(["donor", "own"]).optional(),
@@ -156,6 +156,7 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
     // Check if current cycle type is incompatible with current goal
     const retrievalTypes = ["antagonist", "long-lupron", "microdose-flare", "mini-ivf", "other"]
     const transferTypes = ["fresh", "frozen-medicated", "frozen-modified-natural", "frozen-natural"]
+    const iuiTypes = ["antagonist", "long-lupron", "microdose-flare", "mini-ivf", "other"] // IUI can use similar protocols to retrieval
     
     if (currentGoal === "transfer" && retrievalTypes.includes(currentCycleType)) {
       form.setValue("cycleType", "")
@@ -167,8 +168,18 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
       form.setValue("donorEggs", undefined)
       form.setValue("numberOfEmbryos", undefined)
       form.setValue("embryos", [])
+    } else if (currentGoal === "iui" && transferTypes.includes(currentCycleType)) {
+      form.setValue("cycleType", "")
+      form.setValue("donorEggs", undefined)
+      form.setValue("numberOfEmbryos", undefined)
+      form.setValue("embryos", [])
     } else if (currentGoal === "retrieval") {
       // Clear embryo details when switching to retrieval
+      form.setValue("donorEggs", undefined)
+      form.setValue("numberOfEmbryos", undefined)
+      form.setValue("embryos", [])
+    } else if (currentGoal === "iui") {
+      // Clear embryo details when switching to IUI
       form.setValue("donorEggs", undefined)
       form.setValue("numberOfEmbryos", undefined)
       form.setValue("embryos", [])
@@ -298,6 +309,7 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
                       <SelectContent>
                         <SelectItem value="retrieval">Egg Retrieval</SelectItem>
                         <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                        <SelectItem value="iui">IUI (Intrauterine Insemination)</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormDescription>The primary goal of this IVF cycle</FormDescription>
@@ -423,7 +435,7 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>
-                      {watchedCycleGoal === "transfer" ? "Transfer Type" : "Cycle Type"}
+                      {watchedCycleGoal === "transfer" ? "Transfer Type" : watchedCycleGoal === "iui" ? "IUI Protocol" : "Cycle Type"}
                     </FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
@@ -431,7 +443,9 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
                           <SelectValue placeholder={
                             watchedCycleGoal === "transfer" 
                               ? "Select transfer type" 
-                              : "Select cycle type"
+                              : watchedCycleGoal === "iui"
+                                ? "Select IUI protocol"
+                                : "Select cycle type"
                           } />
                         </SelectTrigger>
                       </FormControl>
@@ -445,10 +459,10 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
                           </>
                         ) : (
                           <>
-                            <SelectItem value="antagonist">Antagonist</SelectItem>
-                            <SelectItem value="long-lupron">Long Lupron</SelectItem>
-                            <SelectItem value="microdose-flare">Microdose Flare</SelectItem>
-                            <SelectItem value="mini-ivf">Mini-IVF</SelectItem>
+                            <SelectItem value="antagonist">{watchedCycleGoal === "iui" ? "Letrozole/Clomid + Trigger" : "Antagonist"}</SelectItem>
+                            <SelectItem value="long-lupron">{watchedCycleGoal === "iui" ? "Injectable Gonadotropins" : "Long Lupron"}</SelectItem>
+                            <SelectItem value="microdose-flare">{watchedCycleGoal === "iui" ? "Natural Cycle" : "Microdose Flare"}</SelectItem>
+                            <SelectItem value="mini-ivf">{watchedCycleGoal === "iui" ? "Clomid Only" : "Mini-IVF"}</SelectItem>
                             <SelectItem value="other">Other</SelectItem>
                           </>
                         )}
@@ -457,7 +471,9 @@ export default function EditCyclePage({ params }: { params: Promise<{ id: string
                     <FormDescription>
                       {watchedCycleGoal === "transfer" 
                         ? "The type of embryo transfer procedure"
-                        : "The protocol type for this IVF cycle"
+                        : watchedCycleGoal === "iui"
+                          ? "The medication protocol for this IUI cycle"
+                          : "The protocol type for this IVF cycle"
                       }
                     </FormDescription>
                     <FormMessage />

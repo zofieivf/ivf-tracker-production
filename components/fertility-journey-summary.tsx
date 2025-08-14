@@ -13,7 +13,7 @@ export function FertilityJourneySummary() {
 
   const journeyStats = useMemo(() => {
     const retrievalCycles = cycles.filter(c => c.cycleGoal === "retrieval")
-    const transferCycles = cycles.filter(c => c.cycleGoal === "transfer")
+    const transferCycles = cycles.filter(c => c.cycleGoal === "transfer" || c.cycleGoal === "iui")
     
     // Protocol summary - separated by retrieval vs transfer
     const retrievalProtocols = retrievalCycles.reduce((acc, cycle) => {
@@ -224,7 +224,7 @@ export function FertilityJourneySummary() {
           <CardContent>
             <div className="text-2xl font-bold">{journeyStats.cycles.total}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {journeyStats.cycles.retrievals} retrievals, {journeyStats.cycles.transfers} transfers
+              {journeyStats.cycles.retrievals} retrievals, {journeyStats.cycles.transfers} transfers/IUIs
             </p>
           </CardContent>
         </Card>
@@ -386,13 +386,13 @@ export function FertilityJourneySummary() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Baby className="h-5 w-5" />
-              Transfer & Pregnancy Summary
+              Transfer/IUI & Pregnancy Summary
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid gap-4 md:grid-cols-3">
               <div className="space-y-2">
-                <div className="text-sm font-medium text-muted-foreground">Total Transfers</div>
+                <div className="text-sm font-medium text-muted-foreground">Total Transfers/IUIs</div>
                 <div className="text-3xl font-bold">{journeyStats.transfers.total}</div>
               </div>
               <div className="space-y-2">

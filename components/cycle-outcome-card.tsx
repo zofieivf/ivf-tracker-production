@@ -81,34 +81,6 @@ const retrievalFormSchema = z.object({
 
 // Schema for transfer cycles
 const transferFormSchema = z.object({
-  betaHcg1: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined))
-    .refine((val) => val === undefined || val >= 0, {
-      message: "Beta HCG 1 cannot be negative"
-    }),
-  betaHcg1Day: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined))
-    .refine((val) => val === undefined || val >= 0, {
-      message: "Beta HCG 1 day cannot be negative"
-    }),
-  betaHcg2: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined))
-    .refine((val) => val === undefined || val >= 0, {
-      message: "Beta HCG 2 cannot be negative"
-    }),
-  betaHcg2Day: z
-    .string()
-    .optional()
-    .transform((val) => (val ? Number.parseInt(val) : undefined))
-    .refine((val) => val === undefined || val >= 0, {
-      message: "Beta HCG 2 day cannot be negative"
-    }),
   transferStatus: z.enum(["successful", "not-successful"]).optional(),
   liveBirth: z.enum(["yes", "no"]).optional(),
 })
@@ -124,7 +96,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const [embryoGrades, setEmbryoGrades] = useState<EmbryoGrade[]>(cycle.outcome?.day3EmbryoGrades || [])
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   
-  const isTransferCycle = cycle.cycleGoal === "transfer"
+  const isTransferCycle = cycle.cycleGoal === "transfer" || cycle.cycleGoal === "iui"
   
   // Get Beta HCG values from Daily Tracking
   const betaFromDailyTracking = getBetaHcgFromDailyTracking(cycle.id)
@@ -156,10 +128,6 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const transferForm = useForm<z.infer<typeof transferFormSchema>>({
     resolver: zodResolver(transferFormSchema),
     defaultValues: {
-      betaHcg1: cycle.outcome?.betaHcg1?.toString() || "",
-      betaHcg1Day: cycle.outcome?.betaHcg1Day?.toString() || "",
-      betaHcg2: cycle.outcome?.betaHcg2?.toString() || "",
-      betaHcg2Day: cycle.outcome?.betaHcg2Day?.toString() || "",
       transferStatus: cycle.outcome?.transferStatus || undefined,
       liveBirth: cycle.outcome?.liveBirth || undefined,
     },
@@ -200,12 +168,8 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
     let outcomeData: any
     
     if (isTransferCycle) {
-      // For transfer cycles, save all transfer data
+      // For transfer cycles, save transfer/IUI outcome data (Beta HCG comes from Daily Tracking)
       outcomeData = {
-        betaHcg1: values.betaHcg1,
-        betaHcg1Day: values.betaHcg1Day,
-        betaHcg2: values.betaHcg2,
-        betaHcg2Day: values.betaHcg2Day,
         transferStatus: values.transferStatus,
         liveBirth: values.liveBirth,
       }
@@ -621,7 +585,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
           {isTransferCycle 
             ? hasBetaInDailyTracking
               ? "Beta HCG values are pulled from your Daily Tracking. To add/edit Beta results, use Daily Tracking with 'Beta' clinic visits."
-              : "For Beta HCG results, use Daily Tracking with 'Beta' clinic visits. Other transfer outcomes can be recorded below."
+              : "For Beta HCG results, use Daily Tracking with 'Beta' clinic visits. Other outcomes can be recorded below."
             : "Record the results and outcomes from your IVF cycle"
           }
         </CardDescription>
@@ -665,102 +629,16 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                   </div>
                 )}
 
-                {/* Beta HCG 1 - Only show manual entry if not in Daily Tracking */}
-                {!hasBetaInDailyTracking && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={transferForm.control}
-                    name="betaHcg1Day"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Beta HCG 1 - Days Post-Transfer</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Array.from({ length: 21 }, (_, i) => i + 7).map((day) => (
-                              <SelectItem key={day} value={day.toString()}>
-                                Day {day}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={transferForm.control}
-                    name="betaHcg1"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Beta HCG 1 Value</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" placeholder="Enter value in mIU/mL" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                )}
 
-                {/* Beta HCG 2 - Only show manual entry if not in Daily Tracking */}
-                {!hasBetaInDailyTracking && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <FormField
-                    control={transferForm.control}
-                    name="betaHcg2Day"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Beta HCG 2 - Days Post-Transfer</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select day" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {Array.from({ length: 21 }, (_, i) => i + 7).map((day) => (
-                              <SelectItem key={day} value={day.toString()}>
-                                Day {day}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  
-                  <FormField
-                    control={transferForm.control}
-                    name="betaHcg2"
-                    render={({ field }) => (
-                      <FormItem className="md:col-span-2">
-                        <FormLabel>Beta HCG 2 Value</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" placeholder="Enter value in mIU/mL" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                )}
 
-                {/* Transfer Status and Live Birth */}
+                {/* Transfer/IUI Status and Live Birth */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField
                     control={transferForm.control}
                     name="transferStatus"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Transfer Status</FormLabel>
+                        <FormLabel>Cycle Status</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>

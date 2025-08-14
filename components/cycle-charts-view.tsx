@@ -27,7 +27,7 @@ interface CycleChartsViewProps {
 
 export function CycleChartsView({ cycle }: CycleChartsViewProps) {
   const { getBetaHcgFromDailyTracking } = useIVFStore()
-  const isTransferCycle = cycle.cycleGoal === "transfer"
+  const isTransferCycle = cycle.cycleGoal === "transfer" || cycle.cycleGoal === "iui"
   
   // Get Beta HCG values from Daily Tracking (prioritized over outcomes)
   const betaFromDailyTracking = getBetaHcgFromDailyTracking(cycle.id)

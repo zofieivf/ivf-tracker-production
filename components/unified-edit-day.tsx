@@ -402,7 +402,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
                   <Label htmlFor="visit-type">Visit Type</Label>
                   <Select
                     value={clinicVisit.type}
-                    onValueChange={(value: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "other") => setClinicVisit({ ...clinicVisit, type: value })}
+                    onValueChange={(value: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "iui" | "other") => setClinicVisit({ ...clinicVisit, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -413,6 +413,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
                       <SelectItem value="retrieval">Retrieval</SelectItem>
                       <SelectItem value="transfer">Transfer</SelectItem>
                       <SelectItem value="beta">Beta</SelectItem>
+                      <SelectItem value="iui">IUI</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>

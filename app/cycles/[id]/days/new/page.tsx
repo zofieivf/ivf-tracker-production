@@ -30,7 +30,7 @@ const medicationSchema = z.object({
 })
 
 const clinicVisitSchema = z.object({
-  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "beta", "other"]),
+  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "beta", "iui", "other"]),
   notes: z.string().optional(),
   betaHcgValue: z.number().optional(),
   betaHcgUnit: z.string().optional(),
@@ -400,6 +400,7 @@ export default function NewDayPage({ params }: { params: Promise<{ id: string }>
                                   <SelectItem value="retrieval">Egg Retrieval</SelectItem>
                                   <SelectItem value="transfer">Embryo Transfer</SelectItem>
                                   <SelectItem value="beta">Beta</SelectItem>
+                                  <SelectItem value="iui">IUI</SelectItem>
                                   <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                               </Select>

@@ -72,7 +72,7 @@ export interface DailyMedicationStatus {
 }
 
 export interface ClinicVisit {
-  type: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "other"
+  type: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "iui" | "other"
   notes?: string
   betaHcgValue?: number
   betaHcgUnit?: string
@@ -130,7 +130,7 @@ export interface IVFCycle {
   dateOfBirth?: string
   ageAtStart?: number
   cycleType: "antagonist" | "long-lupron" | "microdose-flare" | "mini-ivf" | "other" | "fresh" | "frozen-medicated" | "frozen-modified-natural" | "frozen-natural"
-  cycleGoal: "retrieval" | "transfer"
+  cycleGoal: "retrieval" | "transfer" | "iui"
   donorEggs?: "donor" | "own"
   numberOfEmbryos?: number
   embryos?: TransferEmbryo[]

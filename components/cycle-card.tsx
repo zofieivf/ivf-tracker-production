@@ -53,12 +53,31 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
         return "Egg Retrieval"
       case "transfer":
         return "Embryo Transfer"
+      case "iui":
+        return "IUI"
       default:
         return "Egg Retrieval" // Default fallback
     }
   }
 
-  const getCycleTypeDisplay = (type: string) => {
+  const getCycleTypeDisplay = (type: string, goal?: string) => {
+    if (goal === "iui") {
+      switch (type) {
+        case "antagonist":
+          return "Letrozole/Clomid + Trigger"
+        case "long-lupron":
+          return "Injectable Gonadotropins"
+        case "microdose-flare":
+          return "Natural Cycle"
+        case "mini-ivf":
+          return "Clomid Only"
+        case "other":
+          return "Other"
+        default:
+          return type
+      }
+    }
+    
     switch (type) {
       case "antagonist":
         return "Antagonist"
@@ -87,8 +106,8 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
     const outcome = cycle.outcome
     const summaryItems = []
     
-    // Handle transfer cycles differently
-    if (cycle.cycleGoal === "transfer") {
+    // Handle transfer and IUI cycles differently
+    if (cycle.cycleGoal === "transfer" || cycle.cycleGoal === "iui") {
       // Number of embryos
       if (cycle.numberOfEmbryos) {
         const embryoText = cycle.numberOfEmbryos === 1 ? "1 embryo" : `${cycle.numberOfEmbryos} embryos`
@@ -257,7 +276,7 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
       <CardContent className="pt-3">
         <div className="space-y-3">
           <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            <span>{getCycleTypeDisplay(cycle.cycleType)} Protocol</span>
+            <span>{getCycleTypeDisplay(cycle.cycleType, cycle.cycleGoal)} Protocol</span>
             <span>
               {cycle.days && cycle.days.length > 0 ? `${cycle.days.length} days tracked` : "No days tracked"}
             </span>
@@ -269,7 +288,7 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
                 <Beaker className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
                 <div>
                   <p className="text-sm font-medium text-foreground mb-1">
-                    {cycle.cycleGoal === "transfer" ? "Transfer Summary" : "Outcome Summary"}
+                    Outcome Summary
                   </p>
                   <div className="flex flex-wrap gap-1">
                     {formatOutcomeSummary()?.map((item, index) => {

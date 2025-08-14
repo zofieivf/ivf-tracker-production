@@ -49,12 +49,31 @@ export function CycleList({ cycles }: CycleListProps) {
         return "Egg Retrieval"
       case "transfer":
         return "Embryo Transfer"
+      case "iui":
+        return "IUI"
       default:
         return "Egg Retrieval" // Default fallback
     }
   }
 
-  const getCycleTypeDisplay = (type: string) => {
+  const getCycleTypeDisplay = (type: string, goal?: string) => {
+    if (goal === "iui") {
+      switch (type) {
+        case "antagonist":
+          return "Letrozole/Clomid + Trigger"
+        case "long-lupron":
+          return "Injectable Gonadotropins"
+        case "microdose-flare":
+          return "Natural Cycle"
+        case "mini-ivf":
+          return "Clomid Only"
+        case "other":
+          return "Other"
+        default:
+          return type
+      }
+    }
+    
     switch (type) {
       case "standard":
         return "Standard"
@@ -104,7 +123,7 @@ export function CycleList({ cycles }: CycleListProps) {
           <CardContent>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                <span>{getCycleTypeDisplay(cycle.cycleType)} Protocol</span>
+                <span>{getCycleTypeDisplay(cycle.cycleType, cycle.cycleGoal)} Protocol</span>
                 <span>
                   {cycle.days && cycle.days.length > 0 ? `${cycle.days.length} days tracked` : "No days tracked"}
                 </span>
