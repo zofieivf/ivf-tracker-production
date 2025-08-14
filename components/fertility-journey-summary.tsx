@@ -33,11 +33,16 @@ export function FertilityJourneySummary() {
       ...cycles.map(c => parseISO(c.startDate)),
       ...procedures.map(p => parseISO(p.procedureDate)),
       ...naturalPregnancies.map(p => parseISO(p.dateOfConception))
-    ].sort((a, b) => a.getTime() - b.getTime())
+    ].filter(date => !isNaN(date.getTime())).sort((a, b) => a.getTime() - b.getTime())
     
     const startDate = allDates[0]
+    
+    // For journey duration, always calculate from earliest date to today
+    // This gives a more meaningful "journey duration" regardless of cycle status
+    const journeyDuration = startDate ? differenceInMonths(new Date(), startDate) : 0
+    
+    // Most recent activity date for display purposes
     const mostRecentDate = allDates[allDates.length - 1] || new Date()
-    const journeyDuration = startDate ? differenceInMonths(mostRecentDate, startDate) : 0
 
     // Egg retrieval aggregation
     const retrievalResults = retrievalCycles.reduce((acc, cycle) => {

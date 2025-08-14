@@ -30,8 +30,10 @@ const medicationSchema = z.object({
 })
 
 const clinicVisitSchema = z.object({
-  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "other"]),
+  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "beta", "other"]),
   notes: z.string().optional(),
+  betaHcgValue: z.number().optional(),
+  betaHcgUnit: z.string().optional(),
 })
 
 const follicleSizesSchema = z.object({
@@ -397,6 +399,7 @@ export default function NewDayPage({ params }: { params: Promise<{ id: string }>
                                   <SelectItem value="monitoring">Monitoring</SelectItem>
                                   <SelectItem value="retrieval">Egg Retrieval</SelectItem>
                                   <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                                  <SelectItem value="beta">Beta</SelectItem>
                                   <SelectItem value="other">Other</SelectItem>
                                 </SelectContent>
                               </Select>
@@ -418,6 +421,59 @@ export default function NewDayPage({ params }: { params: Promise<{ id: string }>
                             </FormItem>
                           )}
                         />
+
+                        {/* Beta HCG fields when clinic visit type is "beta" */}
+                        {form.watch("clinicVisit.type") === "beta" && (
+                          <div className="space-y-4 border rounded-md p-4 bg-blue-50">
+                            <h4 className="text-sm font-medium text-blue-900">Beta HCG Results</h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="clinicVisit.betaHcgValue"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Beta HCG Value</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="e.g., 125.5"
+                                        {...field}
+                                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                                        value={field.value || ""}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="clinicVisit.betaHcgUnit"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Unit</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="mIU/mL">mIU/mL</SelectItem>
+                                        <SelectItem value="IU/L">IU/L</SelectItem>
+                                        <SelectItem value="ng/mL">ng/mL</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>

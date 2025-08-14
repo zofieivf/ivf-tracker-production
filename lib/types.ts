@@ -72,8 +72,10 @@ export interface DailyMedicationStatus {
 }
 
 export interface ClinicVisit {
-  type: "baseline" | "monitoring" | "retrieval" | "transfer" | "other"
+  type: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "other"
   notes?: string
+  betaHcgValue?: number
+  betaHcgUnit?: string
 }
 
 export interface FollicleMeasurement {
@@ -195,6 +197,7 @@ export type FertilityProcedure =
   | "Lymphocyte immunotherapy"
   | "Cytokine panel"
   | "Intralipids"
+  | "Antiphospholipid Syndrome"
   | "Semen Analysis"
   | "Sperm DNA Fragmentation"
   | "Other"

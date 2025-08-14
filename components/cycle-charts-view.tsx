@@ -18,6 +18,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import type { IVFCycle } from "@/lib/types"
+import { useIVFStore } from "@/lib/store"
 import { TrendingUp, Activity, Droplet, TestTube, Target } from "lucide-react"
 
 interface CycleChartsViewProps {
@@ -25,7 +26,11 @@ interface CycleChartsViewProps {
 }
 
 export function CycleChartsView({ cycle }: CycleChartsViewProps) {
+  const { getBetaHcgFromDailyTracking } = useIVFStore()
   const isTransferCycle = cycle.cycleGoal === "transfer"
+  
+  // Get Beta HCG values from Daily Tracking (prioritized over outcomes)
+  const betaFromDailyTracking = getBetaHcgFromDailyTracking(cycle.id)
   
   // Helper to get cycle date range for better context
   const getCycleDateRange = () => {
@@ -445,7 +450,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
         )}
 
         {/* Beta HCG Results and Transfer Outcomes */}
-        {cycle.outcome?.betaHcg1 !== undefined || cycle.outcome?.betaHcg2 !== undefined || cycle.outcome?.transferStatus || cycle.outcome?.liveBirth ? (
+        {betaFromDailyTracking.betaHcg1 !== undefined || betaFromDailyTracking.betaHcg2 !== undefined || cycle.outcome?.betaHcg1 !== undefined || cycle.outcome?.betaHcg2 !== undefined || cycle.outcome?.transferStatus || cycle.outcome?.liveBirth ? (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -454,39 +459,61 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               </CardTitle>
               <CardDescription>
                 Beta HCG levels following embryo transfer
+                {(betaFromDailyTracking.betaHcg1 !== undefined || betaFromDailyTracking.betaHcg2 !== undefined) && 
+                  " (automatically pulled from Daily Tracking)"
+                }
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {cycle.outcome.betaHcg1 !== undefined && (
+                {(betaFromDailyTracking.betaHcg1 !== undefined || cycle.outcome.betaHcg1 !== undefined) && (
                   <div className="text-center p-6 border rounded-lg">
-                    <div className="text-3xl font-bold text-blue-600">{cycle.outcome.betaHcg1}</div>
+                    <div className="text-3xl font-bold text-blue-600">
+                      {betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1}
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Beta HCG 1 {cycle.outcome.betaHcg1Day && `(Day ${cycle.outcome.betaHcg1Day})`} (mIU/mL)
+                      Beta HCG 1 {((betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day) && 
+                        `(${betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day}DP)`)} (mIU/mL)
+                      {betaFromDailyTracking.betaHcg1 !== undefined && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                          From Daily Tracking
+                        </span>
+                      )}
                     </p>
                   </div>
                 )}
-                {cycle.outcome.betaHcg2 !== undefined && (
+                {(betaFromDailyTracking.betaHcg2 !== undefined || cycle.outcome.betaHcg2 !== undefined) && (
                   <div className="text-center p-6 border rounded-lg">
-                    <div className="text-3xl font-bold text-green-600">{cycle.outcome.betaHcg2}</div>
+                    <div className="text-3xl font-bold text-green-600">
+                      {betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2}
+                    </div>
                     <p className="text-sm text-muted-foreground">
-                      Beta HCG 2 {cycle.outcome.betaHcg2Day && `(Day ${cycle.outcome.betaHcg2Day})`} (mIU/mL)
+                      Beta HCG 2 {((betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day) && 
+                        `(${betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day}DP)`)} (mIU/mL)
+                      {betaFromDailyTracking.betaHcg2 !== undefined && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
+                          From Daily Tracking
+                        </span>
+                      )}
                     </p>
                   </div>
                 )}
               </div>
               
               {/* Show progression if both values are available */}
-              {cycle.outcome.betaHcg1 !== undefined && cycle.outcome.betaHcg2 !== undefined && (
+              {((betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1) !== undefined && (betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2) !== undefined) && (
                 <div className="mt-6 text-center p-4 bg-gray-50 rounded-lg">
                   <div className="text-lg font-semibold">
                     Progression Analysis
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
-                    {cycle.outcome.betaHcg2 > cycle.outcome.betaHcg1 ? 
-                      `Increase from Beta HCG 1 to Beta HCG 2: ${((cycle.outcome.betaHcg2 - cycle.outcome.betaHcg1) / cycle.outcome.betaHcg1 * 100).toFixed(1)}%` :
-                      "Levels decreased from Beta HCG 1 to Beta HCG 2"
-                    }
+                    {(() => {
+                      const beta1 = betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1!
+                      const beta2 = betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2!
+                      return beta2 > beta1 ? 
+                        `Increase from Beta HCG 1 to Beta HCG 2: ${((beta2 - beta1) / beta1 * 100).toFixed(1)}%` :
+                        "Levels decreased from Beta HCG 1 to Beta HCG 2"
+                    })()}
                   </p>
                 </div>
               )}

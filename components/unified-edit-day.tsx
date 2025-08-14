@@ -402,7 +402,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
                   <Label htmlFor="visit-type">Visit Type</Label>
                   <Select
                     value={clinicVisit.type}
-                    onValueChange={(value: "baseline" | "monitoring" | "retrieval" | "transfer" | "other") => setClinicVisit({ ...clinicVisit, type: value })}
+                    onValueChange={(value: "baseline" | "monitoring" | "retrieval" | "transfer" | "beta" | "other") => setClinicVisit({ ...clinicVisit, type: value })}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -412,6 +412,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
                       <SelectItem value="monitoring">Monitoring</SelectItem>
                       <SelectItem value="retrieval">Retrieval</SelectItem>
                       <SelectItem value="transfer">Transfer</SelectItem>
+                      <SelectItem value="beta">Beta</SelectItem>
                       <SelectItem value="other">Other</SelectItem>
                     </SelectContent>
                   </Select>
@@ -425,6 +426,47 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
                     placeholder="Notes from your visit..."
                   />
                 </div>
+
+                {/* Beta HCG fields when clinic visit type is "beta" */}
+                {clinicVisit.type === "beta" && (
+                  <div className="space-y-3 border rounded-md p-4 bg-blue-50">
+                    <h4 className="text-sm font-medium text-blue-900">Beta HCG Results</h4>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="beta-hcg-value">Beta HCG Value</Label>
+                        <Input
+                          id="beta-hcg-value"
+                          type="number"
+                          step="0.1"
+                          value={clinicVisit.betaHcgValue || ""}
+                          onChange={(e) => setClinicVisit({ 
+                            ...clinicVisit, 
+                            betaHcgValue: e.target.value === "" ? undefined : parseFloat(e.target.value) 
+                          })}
+                          placeholder="e.g., 125.5"
+                        />
+                      </div>
+
+                      <div>
+                        <Label htmlFor="beta-hcg-unit">Unit</Label>
+                        <Select
+                          value={clinicVisit.betaHcgUnit || ""}
+                          onValueChange={(value) => setClinicVisit({ ...clinicVisit, betaHcgUnit: value })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select unit" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="mIU/mL">mIU/mL</SelectItem>
+                            <SelectItem value="IU/L">IU/L</SelectItem>
+                            <SelectItem value="ng/mL">ng/mL</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

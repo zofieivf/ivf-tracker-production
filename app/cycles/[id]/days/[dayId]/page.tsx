@@ -192,6 +192,33 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
                   <p className="capitalize">{day.clinicVisit.type}</p>
                 </div>
 
+                {/* Beta HCG Results */}
+                {day.clinicVisit.type === "beta" && (
+                  <div className="bg-blue-50 p-4 rounded-md border">
+                    <p className="text-sm font-medium text-blue-900 mb-3">Beta HCG Results</p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {day.clinicVisit.betaHcgValue && (
+                        <div>
+                          <p className="text-sm font-medium">Beta HCG Value</p>
+                          <p className="text-lg font-bold text-blue-600">
+                            {day.clinicVisit.betaHcgValue} {day.clinicVisit.betaHcgUnit || ""}
+                          </p>
+                        </div>
+                      )}
+                      {(() => {
+                        const { calculateDaysPostTransfer } = useIVFStore.getState()
+                        const daysPost = calculateDaysPostTransfer(id, day.cycleDay)
+                        return daysPost !== null ? (
+                          <div>
+                            <p className="text-sm font-medium">Days Post-Transfer</p>
+                            <p className="text-lg font-bold text-green-600">{daysPost} days</p>
+                          </div>
+                        ) : null
+                      })()}
+                    </div>
+                  </div>
+                )}
+
                 {day.clinicVisit.notes && (
                   <div>
                     <p className="text-sm font-medium">Notes</p>

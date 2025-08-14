@@ -39,6 +39,7 @@ const fertilityProcedures: FertilityProcedure[] = [
   "Lymphocyte immunotherapy",
   "Cytokine panel",
   "Intralipids",
+  "Antiphospholipid Syndrome",
   "Semen Analysis",
   "Sperm DNA Fragmentation",
   "Other"

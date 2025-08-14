@@ -119,12 +119,16 @@ interface CycleOutcomeCardProps {
 
 export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
   const router = useRouter()
-  const { updateCycleOutcome, cycles } = useIVFStore()
+  const { updateCycleOutcome, cycles, getBetaHcgFromDailyTracking } = useIVFStore()
   const [isEditing, setIsEditing] = useState(!cycle.outcome)
   const [embryoGrades, setEmbryoGrades] = useState<EmbryoGrade[]>(cycle.outcome?.day3EmbryoGrades || [])
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
   
   const isTransferCycle = cycle.cycleGoal === "transfer"
+  
+  // Get Beta HCG values from Daily Tracking
+  const betaFromDailyTracking = getBetaHcgFromDailyTracking(cycle.id)
+  const hasBetaInDailyTracking = Object.keys(betaFromDailyTracking).length > 0
   
   // Get retrieval cycles for embryos (for transfer cycles)
   const getRetrievalCyclesForEmbryos = () => {
@@ -309,21 +313,38 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
             {isTransferCycle ? (
               // Transfer cycle outcome display
               <>
-                {cycle.outcome.betaHcg1 !== undefined && (
+                {/* Show Beta HCG from Daily Tracking if available, otherwise from outcomes */}
+                {(betaFromDailyTracking.betaHcg1 !== undefined || cycle.outcome.betaHcg1 !== undefined) && (
                   <div>
                     <p className="text-sm font-medium">
-                      Beta HCG 1 {cycle.outcome.betaHcg1Day && `(Day ${cycle.outcome.betaHcg1Day})`}
+                      Beta HCG 1 {(betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day) && 
+                        `(${betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day}DP)`}
+                      {betaFromDailyTracking.betaHcg1 !== undefined && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          From Daily Tracking
+                        </span>
+                      )}
                     </p>
-                    <p className="text-2xl font-bold">{cycle.outcome.betaHcg1}</p>
+                    <p className="text-2xl font-bold">
+                      {betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1}
+                    </p>
                   </div>
                 )}
 
-                {cycle.outcome.betaHcg2 !== undefined && (
+                {(betaFromDailyTracking.betaHcg2 !== undefined || cycle.outcome.betaHcg2 !== undefined) && (
                   <div>
                     <p className="text-sm font-medium">
-                      Beta HCG 2 {cycle.outcome.betaHcg2Day && `(Day ${cycle.outcome.betaHcg2Day})`}
+                      Beta HCG 2 {(betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day) && 
+                        `(${betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day}DP)`}
+                      {betaFromDailyTracking.betaHcg2 !== undefined && (
+                        <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                          From Daily Tracking
+                        </span>
+                      )}
                     </p>
-                    <p className="text-2xl font-bold">{cycle.outcome.betaHcg2}</p>
+                    <p className="text-2xl font-bold">
+                      {betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2}
+                    </p>
                   </div>
                 )}
 
@@ -598,7 +619,9 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
         <CardTitle>Cycle Outcome</CardTitle>
         <CardDescription>
           {isTransferCycle 
-            ? "Record your Beta HCG results from the transfer"
+            ? hasBetaInDailyTracking
+              ? "Beta HCG values are pulled from your Daily Tracking. To add/edit Beta results, use Daily Tracking with 'Beta' clinic visits."
+              : "For Beta HCG results, use Daily Tracking with 'Beta' clinic visits. Other transfer outcomes can be recorded below."
             : "Record the results and outcomes from your IVF cycle"
           }
         </CardDescription>
@@ -609,8 +632,42 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
             {isTransferCycle ? (
               // Transfer cycle form fields
               <div className="space-y-6">
-                {/* Beta HCG 1 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Beta HCG Information */}
+                {hasBetaInDailyTracking && (
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <h3 className="text-sm font-medium text-blue-900">Beta HCG Values Found in Daily Tracking</h3>
+                    </div>
+                    <p className="text-sm text-blue-700 mb-3">
+                      Your Beta HCG results are automatically pulled from Daily Tracking. To modify these values, edit them in Daily Tracking.
+                    </p>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {betaFromDailyTracking.betaHcg1 !== undefined && (
+                        <div className="bg-white rounded p-3">
+                          <span className="text-xs text-blue-600">Beta HCG 1</span>
+                          <p className="font-semibold">
+                            {betaFromDailyTracking.betaHcg1} 
+                            {betaFromDailyTracking.betaHcg1Day && ` (${betaFromDailyTracking.betaHcg1Day}DP)`}
+                          </p>
+                        </div>
+                      )}
+                      {betaFromDailyTracking.betaHcg2 !== undefined && (
+                        <div className="bg-white rounded p-3">
+                          <span className="text-xs text-blue-600">Beta HCG 2</span>
+                          <p className="font-semibold">
+                            {betaFromDailyTracking.betaHcg2}
+                            {betaFromDailyTracking.betaHcg2Day && ` (${betaFromDailyTracking.betaHcg2Day}DP)`}
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Beta HCG 1 - Only show manual entry if not in Daily Tracking */}
+                {!hasBetaInDailyTracking && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={transferForm.control}
                     name="betaHcg1Day"
@@ -650,9 +707,11 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                     )}
                   />
                 </div>
+                )}
 
-                {/* Beta HCG 2 */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {/* Beta HCG 2 - Only show manual entry if not in Daily Tracking */}
+                {!hasBetaInDailyTracking && (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <FormField
                     control={transferForm.control}
                     name="betaHcg2Day"
@@ -692,6 +751,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                     )}
                   />
                 </div>
+                )}
 
                 {/* Transfer Status and Live Birth */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

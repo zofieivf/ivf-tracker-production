@@ -109,6 +109,13 @@ export function CycleCalendarView({
             badgeColor: 'bg-green-600 text-white',
             displayName: 'MON'
           }
+        case "beta":
+          return { 
+            isClinicDay: true, 
+            styling: 'ring-2 ring-blue-500 bg-blue-50/50', 
+            badgeColor: 'bg-blue-600 text-white',
+            displayName: 'BET'
+          }
         case "other":
           return { 
             isClinicDay: true, 

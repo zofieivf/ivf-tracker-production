@@ -16,7 +16,7 @@ interface UnifiedDayCardProps {
 }
 
 export function UnifiedDayCard({ day, cycleId, isPlaceholder = false }: UnifiedDayCardProps) {
-  const { getUnifiedMedicationsForDay } = useIVFStore()
+  const { getUnifiedMedicationsForDay, calculateDaysPostTransfer } = useIVFStore()
   
   // Use unified medication system - single source of truth
   const medications = getUnifiedMedicationsForDay(cycleId, day.cycleDay)
@@ -76,6 +76,15 @@ export function UnifiedDayCard({ day, cycleId, isPlaceholder = false }: UnifiedD
               <div className="flex items-center gap-2">
                 <Stethoscope className="h-4 w-4 text-primary" />
                 <span className="text-sm">{day.clinicVisit?.type} visit</span>
+                {day.clinicVisit?.type === "beta" && day.clinicVisit?.betaHcgValue && (
+                  <span className="text-sm font-medium text-blue-600">
+                    β-hCG: {day.clinicVisit.betaHcgValue}{day.clinicVisit.betaHcgUnit && ` ${day.clinicVisit.betaHcgUnit}`}
+                    {(() => {
+                      const daysPost = calculateDaysPostTransfer(cycleId, day.cycleDay)
+                      return daysPost !== null ? ` (${daysPost}DP)` : ""
+                    })()}
+                  </span>
+                )}
               </div>
             )}
 

@@ -42,6 +42,8 @@ interface IVFStore {
   ensureAllDaysExist: (cycleId: string) => void
   setUserProfile: (profile: UserProfile) => void
   updateUserProfile: (profile: Partial<UserProfile>) => void
+  calculateDaysPostTransfer: (cycleId: string, currentDay: number) => number | null
+  getBetaHcgFromDailyTracking: (cycleId: string) => { betaHcg1?: number; betaHcg1Day?: number; betaHcg2?: number; betaHcg2Day?: number }
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -358,6 +360,65 @@ export const useIVFStore = create<IVFStore>()(
             }),
           }))
         }
+      },
+
+      calculateDaysPostTransfer: (cycleId, currentDay) => {
+        const state = get()
+        const cycle = state.cycles.find(c => c.id === cycleId)
+        
+        if (!cycle || !cycle.days) return null
+        
+        // Find the transfer day (clinic visit type "transfer")
+        const transferDay = cycle.days.find(day => 
+          day.clinicVisit?.type === "transfer"
+        )
+        
+        if (!transferDay) return null
+        
+        // Calculate days since transfer
+        const daysSinceTransfer = currentDay - transferDay.cycleDay
+        
+        // Return positive number only (can't have negative days post-transfer)
+        return daysSinceTransfer >= 0 ? daysSinceTransfer : null
+      },
+
+      getBetaHcgFromDailyTracking: (cycleId) => {
+        const state = get()
+        const cycle = state.cycles.find(c => c.id === cycleId)
+        
+        if (!cycle || !cycle.days) return {}
+        
+        // Find all beta clinic visits with HCG values
+        const betaDays = cycle.days
+          .filter(day => 
+            day.clinicVisit?.type === "beta" && 
+            day.clinicVisit?.betaHcgValue !== undefined
+          )
+          .sort((a, b) => a.cycleDay - b.cycleDay) // Sort by cycle day
+        
+        if (betaDays.length === 0) return {}
+        
+        const result: { betaHcg1?: number; betaHcg1Day?: number; betaHcg2?: number; betaHcg2Day?: number } = {}
+        
+        // First beta becomes betaHcg1
+        if (betaDays[0]) {
+          result.betaHcg1 = betaDays[0].clinicVisit!.betaHcgValue!
+          const daysPost = get().calculateDaysPostTransfer(cycleId, betaDays[0].cycleDay)
+          if (daysPost !== null) {
+            result.betaHcg1Day = daysPost
+          }
+        }
+        
+        // Second beta becomes betaHcg2
+        if (betaDays[1]) {
+          result.betaHcg2 = betaDays[1].clinicVisit!.betaHcgValue!
+          const daysPost = get().calculateDaysPostTransfer(cycleId, betaDays[1].cycleDay)
+          if (daysPost !== null) {
+            result.betaHcg2Day = daysPost
+          }
+        }
+        
+        return result
       },
     }),
     {
