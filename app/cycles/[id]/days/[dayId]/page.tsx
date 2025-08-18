@@ -27,6 +27,7 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
     const currentCycle = getCycleById(id)
     setCycle(currentCycle)
     setDay(currentCycle?.days.find((d) => d.id === dayId))
+    
   }, [id, dayId, getCycleById, ensureScheduledDaysExist])
 
   // Navigation helpers
@@ -112,6 +113,7 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
             </Button>
           )}
 
+
           {/* Edit Day Button */}
           <Button asChild variant="outline" size="sm">
             <Link href={`/cycles/${id}/days/${dayId}/edit`}>
@@ -129,53 +131,9 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
           cycleDay={day.cycleDay} 
           date={day.date} 
         />
+        
 
         <div className="grid gap-6 md:grid-cols-2">
-        {/* Only show old medications if no medication schedule exists */}
-        {day.medications && day.medications.length > 0 && !getMedicationScheduleByCycleId(id) && (
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center gap-2">
-                <Pill className="h-5 w-5 text-primary" />
-                <CardTitle>Medications</CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-4">
-                {day.medications.map((med, index) => (
-                  <li key={index} className="border-b pb-3 last:border-0 last:pb-0">
-                    <div className="flex justify-between">
-                      <div>
-                        <p className="font-medium">{med.name}</p>
-                        <div className="flex gap-2 text-sm text-muted-foreground">
-                          {med.dosage && <span>{med.dosage}</span>}
-                          {(med.hour && med.minute && med.ampm) && (
-                            <>
-                              {med.dosage && <span>•</span>}
-                              <span>{med.hour}:{med.minute} {med.ampm}</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {med.taken && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            Taken
-                          </Badge>
-                        )}
-                        {med.refrigerated && (
-                          <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                            Refrigerated
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
-        )}
 
         {day.clinicVisit && (
           <Card>

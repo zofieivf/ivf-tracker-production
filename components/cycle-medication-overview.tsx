@@ -21,12 +21,12 @@ interface MedicationEntry {
   refrigerated: boolean
   taken?: boolean
   skipped?: boolean
-  source: "scheduled" | "day-specific" | "legacy"
+  source: "scheduled" | "day-specific"
   notes?: string
 }
 
 export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps) {
-  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+  const { getMedicationScheduleByCycleId, getDailyMedicationStatus, dailyMedicationStatuses, medicationSchedules } = useIVFStore()
   
   const { medicationData, groupedByDay } = useMemo(() => {
     const schedule = getMedicationScheduleByCycleId(cycle.id)
@@ -73,23 +73,8 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
               refrigerated: dayMed.refrigerated,
               taken: dayMed.taken,
               skipped: dayMed.skipped,
-              source: "day-specific"
-            })
-          })
-        }
-      } else {
-        // Fallback to legacy medications if no schedule exists
-        if (day.medications) {
-          day.medications.forEach(med => {
-            allMedications.push({
-              day: day.cycleDay,
-              date: day.date,
-              name: med.name,
-              dosage: med.dosage || "",
-              time: med.hour && med.minute && med.ampm ? `${med.hour}:${med.minute} ${med.ampm}` : "",
-              refrigerated: med.refrigerated || false,
-              taken: med.taken,
-              source: "legacy"
+              source: "day-specific",
+              notes: dayMed.notes
             })
           })
         }
@@ -131,7 +116,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
       medicationData: sortedMedications,
       groupedByDay: Object.values(grouped).sort((a, b) => a.day - b.day)
     }
-  }, [cycle, getMedicationScheduleByCycleId, getDailyMedicationStatus])
+  }, [cycle, getMedicationScheduleByCycleId, getDailyMedicationStatus, dailyMedicationStatuses, medicationSchedules])
 
   // Group medications by name for the summary
   const medicationSummary = useMemo(() => {
@@ -180,8 +165,6 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
         return <Badge variant="secondary" className="text-xs">Medication Schedule</Badge>
       case "day-specific":
         return <Badge variant="outline" className="text-xs">Day-Specific</Badge>
-      case "legacy":
-        return <Badge variant="outline" className="text-xs">Manual Entry</Badge>
       default:
         return null
     }

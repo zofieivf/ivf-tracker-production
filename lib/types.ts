@@ -9,16 +9,6 @@ export interface CycleDay {
   notes?: string
 }
 
-// Legacy interface - being phased out in favor of unified system
-export interface Medication {
-  name: string
-  dosage?: string
-  hour?: string
-  minute?: string
-  ampm?: string
-  taken: boolean
-  refrigerated?: boolean
-}
 
 export interface ScheduledMedication {
   id: string

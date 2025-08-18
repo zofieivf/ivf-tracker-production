@@ -466,14 +466,14 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {(betaFromDailyTracking.betaHcg1 !== undefined || cycle.outcome.betaHcg1 !== undefined) && (
+                {(betaFromDailyTracking.betaHcg1 !== undefined || cycle.outcome?.betaHcg1 !== undefined) && (
                   <div className="text-center p-6 border rounded-lg">
                     <div className="text-3xl font-bold text-blue-600">
-                      {betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1}
+                      {betaFromDailyTracking.betaHcg1 ?? cycle.outcome?.betaHcg1}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Beta HCG 1 {((betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day) && 
-                        `(${betaFromDailyTracking.betaHcg1Day || cycle.outcome.betaHcg1Day}DP)`)} (mIU/mL)
+                      Beta HCG 1 {((betaFromDailyTracking.betaHcg1Day || cycle.outcome?.betaHcg1Day) && 
+                        `(${betaFromDailyTracking.betaHcg1Day || cycle.outcome?.betaHcg1Day}DP)`)} (mIU/mL)
                       {betaFromDailyTracking.betaHcg1 !== undefined && (
                         <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
                           From Daily Tracking
@@ -482,14 +482,14 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                     </p>
                   </div>
                 )}
-                {(betaFromDailyTracking.betaHcg2 !== undefined || cycle.outcome.betaHcg2 !== undefined) && (
+                {(betaFromDailyTracking.betaHcg2 !== undefined || cycle.outcome?.betaHcg2 !== undefined) && (
                   <div className="text-center p-6 border rounded-lg">
                     <div className="text-3xl font-bold text-green-600">
-                      {betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2}
+                      {betaFromDailyTracking.betaHcg2 ?? cycle.outcome?.betaHcg2}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      Beta HCG 2 {((betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day) && 
-                        `(${betaFromDailyTracking.betaHcg2Day || cycle.outcome.betaHcg2Day}DP)`)} (mIU/mL)
+                      Beta HCG 2 {((betaFromDailyTracking.betaHcg2Day || cycle.outcome?.betaHcg2Day) && 
+                        `(${betaFromDailyTracking.betaHcg2Day || cycle.outcome?.betaHcg2Day}DP)`)} (mIU/mL)
                       {betaFromDailyTracking.betaHcg2 !== undefined && (
                         <span className="ml-2 text-xs bg-blue-100 text-blue-800 px-1 py-0.5 rounded">
                           From Daily Tracking
@@ -501,15 +501,15 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               </div>
               
               {/* Show progression if both values are available */}
-              {((betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1) !== undefined && (betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2) !== undefined) && (
+              {((betaFromDailyTracking.betaHcg1 ?? cycle.outcome?.betaHcg1) !== undefined && (betaFromDailyTracking.betaHcg2 ?? cycle.outcome?.betaHcg2) !== undefined) && (
                 <div className="mt-6 text-center p-4 bg-gray-50 rounded-lg">
                   <div className="text-lg font-semibold">
                     Progression Analysis
                   </div>
                   <p className="text-sm text-muted-foreground mt-1">
                     {(() => {
-                      const beta1 = betaFromDailyTracking.betaHcg1 ?? cycle.outcome.betaHcg1!
-                      const beta2 = betaFromDailyTracking.betaHcg2 ?? cycle.outcome.betaHcg2!
+                      const beta1 = betaFromDailyTracking.betaHcg1 ?? cycle.outcome?.betaHcg1!
+                      const beta2 = betaFromDailyTracking.betaHcg2 ?? cycle.outcome?.betaHcg2!
                       return beta2 > beta1 ? 
                         `Increase from Beta HCG 1 to Beta HCG 2: ${((beta2 - beta1) / beta1 * 100).toFixed(1)}%` :
                         "Levels decreased from Beta HCG 1 to Beta HCG 2"
@@ -519,21 +519,21 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               )}
 
               {/* Transfer Status and Live Birth */}
-              {(cycle.outcome.transferStatus || cycle.outcome.liveBirth) && (
+              {(cycle.outcome?.transferStatus || cycle.outcome?.liveBirth) && (
                 <div className="mt-6 grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {cycle.outcome.transferStatus && (
+                  {cycle.outcome?.transferStatus && (
                     <div className="text-center p-4 border rounded-lg">
-                      <div className={`text-2xl font-bold ${cycle.outcome.transferStatus === "successful" ? "text-green-600" : "text-red-600"}`}>
-                        {cycle.outcome.transferStatus === "not-successful" ? "Not Successful" : "Successful"}
+                      <div className={`text-2xl font-bold ${cycle.outcome?.transferStatus === "successful" ? "text-green-600" : "text-red-600"}`}>
+                        {cycle.outcome?.transferStatus === "not-successful" ? "Not Successful" : "Successful"}
                       </div>
                       <p className="text-sm text-muted-foreground">Transfer Status</p>
                     </div>
                   )}
 
-                  {cycle.outcome.liveBirth && (
+                  {cycle.outcome?.liveBirth && (
                     <div className="text-center p-4 border rounded-lg">
-                      <div className={`text-2xl font-bold ${cycle.outcome.liveBirth === "yes" ? "text-green-600" : "text-gray-600"}`}>
-                        {cycle.outcome.liveBirth === "yes" ? "Yes" : "No"}
+                      <div className={`text-2xl font-bold ${cycle.outcome?.liveBirth === "yes" ? "text-green-600" : "text-gray-600"}`}>
+                        {cycle.outcome?.liveBirth === "yes" ? "Yes" : "No"}
                       </div>
                       <p className="text-sm text-muted-foreground">Live Birth</p>
                     </div>
@@ -662,12 +662,12 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     if (!cycle.outcome) return []
 
     const stages = [
-      { name: "Eggs Retrieved", value: cycle.outcome.eggsRetrieved || 0, fill: "#3b82f6" },
-      { name: "Mature Eggs", value: cycle.outcome.matureEggs || 0, fill: "#10b981" },
-      { name: "Fertilized", value: cycle.outcome.fertilized || 0, fill: "#f59e0b" },
-      { name: "Day 3 Embryos", value: cycle.outcome.day3Embryos || 0, fill: "#ef4444" },
-      { name: "Day 5/6/7 Blastocysts", value: cycle.outcome.blastocysts || 0, fill: "#8b5cf6" },
-      { name: "Euploid Blastocysts", value: cycle.outcome.euploidBlastocysts || 0, fill: "#06b6d4" },
+      { name: "Eggs Retrieved", value: cycle.outcome?.eggsRetrieved || 0, fill: "#3b82f6" },
+      { name: "Mature Eggs", value: cycle.outcome?.matureEggs || 0, fill: "#10b981" },
+      { name: "Fertilized", value: cycle.outcome?.fertilized || 0, fill: "#f59e0b" },
+      { name: "Day 3 Embryos", value: cycle.outcome?.day3Embryos || 0, fill: "#ef4444" },
+      { name: "Day 5/6/7 Blastocysts", value: cycle.outcome?.blastocysts || 0, fill: "#8b5cf6" },
+      { name: "Euploid Blastocysts", value: cycle.outcome?.euploidBlastocysts || 0, fill: "#06b6d4" },
     ]
 
     // Only include stages with values > 0
@@ -1364,7 +1364,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
 
 
           {/* PGT-A Testing Results */}
-          {cycle.outcome?.euploidBlastocysts !== undefined && cycle.outcome?.blastocysts !== undefined && cycle.outcome.blastocysts > 0 && (
+          {cycle.outcome?.euploidBlastocysts !== undefined && cycle.outcome?.blastocysts !== undefined && cycle.outcome?.blastocysts > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -1382,12 +1382,12 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                       data={[
                         {
                           name: "Total Blastocysts",
-                          count: cycle.outcome.blastocysts,
+                          count: cycle.outcome?.blastocysts,
                           fill: "#8b5cf6"
                         },
                         {
                           name: "Euploid (Normal)",
-                          count: cycle.outcome.euploidBlastocysts,
+                          count: cycle.outcome?.euploidBlastocysts,
                           fill: "#10b981"
                         }
                       ]}
@@ -1400,7 +1400,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                         content={({ active, payload }) => {
                           if (active && payload && payload.length) {
                             const data = payload[0].payload
-                            const percentage = cycle.outcome?.blastocysts ? Math.round((data.count / cycle.outcome.blastocysts) * 100) : 0
+                            const percentage = cycle.outcome?.blastocysts ? Math.round((data.count / cycle.outcome?.blastocysts) * 100) : 0
                             return (
                               <div className="bg-background border rounded-lg shadow-lg p-3">
                                 <p className="font-medium">{data.name}</p>
@@ -1423,7 +1423,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
           )}
 
           {/* Transfer Readiness Summary */}
-          {cycle.outcome?.embryosAvailableForTransfer !== undefined && cycle.outcome.embryosAvailableForTransfer > 0 && (
+          {cycle.outcome?.embryosAvailableForTransfer !== undefined && cycle.outcome?.embryosAvailableForTransfer > 0 && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -1437,12 +1437,12 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="text-center p-4 border rounded-lg">
-                    <div className="text-2xl font-bold text-green-600">{cycle.outcome.embryosAvailableForTransfer}</div>
+                    <div className="text-2xl font-bold text-green-600">{cycle.outcome?.embryosAvailableForTransfer}</div>
                     <p className="text-sm text-muted-foreground">Available for Transfer</p>
                   </div>
-                  {cycle.outcome.frozen !== undefined && cycle.outcome.frozen > 0 && (
+                  {cycle.outcome?.frozen !== undefined && cycle.outcome?.frozen > 0 && (
                     <div className="text-center p-4 border rounded-lg">
-                      <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
+                      <div className="text-2xl font-bold text-blue-600">{cycle.outcome?.frozen}</div>
                       <p className="text-sm text-muted-foreground">Frozen for Future Use</p>
                     </div>
                   )}
@@ -1452,7 +1452,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
           )}
 
           {/* Frozen Embryos Summary */}
-          {cycle.outcome?.frozen && cycle.outcome.frozen > 0 && !cycle.outcome?.embryosAvailableForTransfer && (
+          {cycle.outcome?.frozen && cycle.outcome?.frozen > 0 && !cycle.outcome?.embryosAvailableForTransfer && (
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
@@ -1465,7 +1465,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               </CardHeader>
               <CardContent>
                 <div className="text-center p-4 border rounded-lg">
-                  <div className="text-2xl font-bold text-blue-600">{cycle.outcome.frozen}</div>
+                  <div className="text-2xl font-bold text-blue-600">{cycle.outcome?.frozen}</div>
                   <p className="text-sm text-muted-foreground">Embryos Frozen</p>
                 </div>
               </CardContent>

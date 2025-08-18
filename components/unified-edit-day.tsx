@@ -41,7 +41,8 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
     updateDay,
     getUnifiedMedicationsForDay,
     ensureDailyMedicationStatus,
-    updateDailyMedicationStatus
+    updateDailyMedicationStatus,
+    dailyMedicationStatuses
   } = useIVFStore()
 
   const [cycle, setCycle] = useState(getCycleById(cycleId))
@@ -85,7 +86,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
       setNotes(currentDay.notes || "")
       setLiningCheck(!!currentDay.follicleSizes?.liningThickness)
     }
-  }, [cycleId, dayId, getCycleById, getUnifiedMedicationsForDay])
+  }, [cycleId, dayId, getCycleById, getUnifiedMedicationsForDay, dailyMedicationStatuses])
 
   if (!mounted || !cycle || !day) {
     return null
@@ -126,7 +127,10 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
     }
     updateDay(cycleId, dayId, updatedDay)
 
-    onSave()
+    // Add a small delay to ensure store state is fully updated before navigation
+    setTimeout(() => {
+      onSave()
+    }, 100)
   }
 
   const addDaySpecificMedication = () => {

@@ -44,6 +44,7 @@ interface IVFStore {
   updateUserProfile: (profile: Partial<UserProfile>) => void
   calculateDaysPostTransfer: (cycleId: string, currentDay: number) => number | null
   getBetaHcgFromDailyTracking: (cycleId: string) => { betaHcg1?: number; betaHcg1Day?: number; betaHcg2?: number; betaHcg2Day?: number }
+  cleanupDuplicateDailyStatuses: (cycleId: string, cycleDay: number) => void
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -238,9 +239,20 @@ export const useIVFStore = create<IVFStore>()(
       },
 
       getDailyMedicationStatus: (cycleId, cycleDay) => {
-        return get().dailyMedicationStatuses.find((status) => 
+        const matches = get().dailyMedicationStatuses.filter((status) => 
           status.cycleId === cycleId && status.cycleDay === cycleDay
         )
+        
+        if (matches.length > 1) {
+          // Return the most recently updated one
+          return matches.sort((a, b) => {
+            const aTime = new Date(a.updatedAt || a.createdAt).getTime()
+            const bTime = new Date(b.updatedAt || b.createdAt).getTime()
+            return bTime - aTime
+          })[0]
+        }
+        
+        return matches[0]
       },
 
       // Unified medication functions
@@ -257,14 +269,22 @@ export const useIVFStore = create<IVFStore>()(
       },
 
       ensureDailyMedicationStatus: (cycleId, cycleDay, date) => {
+        console.log("🏗️ ensureDailyMedicationStatus called for cycleId:", cycleId, "cycleDay:", cycleDay)
+        
         const state = get()
         let existingStatus = state.dailyMedicationStatuses.find(
           status => status.cycleId === cycleId && status.cycleDay === cycleDay
         )
         
+        console.log("🏗️ Existing status found:", !!existingStatus)
+        if (existingStatus) {
+          console.log("🏗️ Existing status ID:", existingStatus.id)
+        }
+        
         if (!existingStatus) {
           const { createEmptyDailyStatus } = require('./medication-utils')
           existingStatus = createEmptyDailyStatus(cycleId, cycleDay, date)
+          console.log("🏗️ Created new status with ID:", existingStatus.id)
           set((state) => ({
             dailyMedicationStatuses: [...state.dailyMedicationStatuses, existingStatus!]
           }))
@@ -419,6 +439,51 @@ export const useIVFStore = create<IVFStore>()(
         }
         
         return result
+      },
+
+      cleanupDuplicateDailyStatuses: (cycleId, cycleDay) => {
+        set((state) => {
+          const matches = state.dailyMedicationStatuses.filter(
+            status => status.cycleId === cycleId && status.cycleDay === cycleDay
+          )
+          
+          if (matches.length <= 1) {
+            return state
+          }
+          
+          // Sort by creation/update time to find the most recent
+          const sorted = matches.sort((a, b) => {
+            const aTime = new Date(a.updatedAt || a.createdAt).getTime()
+            const bTime = new Date(b.updatedAt || b.createdAt).getTime()
+            return bTime - aTime
+          })
+          
+          // Keep the most recent one and merge any day-specific medications
+          const keeper = sorted[0]
+          const toRemove = sorted.slice(1)
+          
+          // Merge day-specific medications from all duplicates
+          const allDaySpecificMeds = matches.flatMap(m => m.daySpecificMedications || [])
+          const uniqueDaySpecificMeds = allDaySpecificMeds.filter((med, index, arr) => 
+            arr.findIndex(m => m.id === med.id) === index
+          )
+          
+          // Update the keeper with merged data
+          const mergedKeeper = {
+            ...keeper,
+            daySpecificMedications: uniqueDaySpecificMeds,
+            updatedAt: new Date().toISOString()
+          }
+          
+          // Remove duplicates and update the keeper
+          const cleaned = state.dailyMedicationStatuses
+            .filter(status => !toRemove.some(tr => tr.id === status.id))
+            .map(status => status.id === keeper.id ? mergedKeeper : status)
+          
+          return {
+            dailyMedicationStatuses: cleaned
+          }
+        })
       },
     }),
     {

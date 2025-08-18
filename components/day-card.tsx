@@ -18,10 +18,7 @@ interface DayCardProps {
 export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
   const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
   
-  // Check legacy medications
-  const hasLegacyMedications = day.medications && day.medications.length > 0
-  
-  // Check new medication system
+  // Check medication system
   const schedule = getMedicationScheduleByCycleId(cycleId)
   const dailyStatus = getDailyMedicationStatus(cycleId, day.cycleDay)
   const scheduledMedications = schedule?.medications.filter(
@@ -29,11 +26,9 @@ export function DayCard({ day, cycleId, isPlaceholder = false }: DayCardProps) {
   ) || []
   const daySpecificMedications = dailyStatus?.daySpecificMedications || []
   
-  const totalMedicationCount = (hasLegacyMedications ? day.medications.length : 0) + 
-                              scheduledMedications.length + 
-                              daySpecificMedications.length
+  const totalMedicationCount = scheduledMedications.length + daySpecificMedications.length
   
-  const hasMedications = hasLegacyMedications || totalMedicationCount > 0
+  const hasMedications = totalMedicationCount > 0
   const hasClinicVisit = !!day.clinicVisit
   const hasFollicleSizes = !!day.follicleSizes
   const hasBloodwork = !!day.bloodwork && day.bloodwork.length > 0

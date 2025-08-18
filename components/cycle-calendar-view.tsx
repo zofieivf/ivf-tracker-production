@@ -46,7 +46,6 @@ export function CycleCalendarView({
         id: `placeholder-${dayNum}`,
         date: dayDate.toISOString(),
         cycleDay: dayNum,
-        medications: [],
         notes: ''
       }
       allDays.push({ type: 'placeholder', day: placeholderDay })
@@ -54,10 +53,7 @@ export function CycleCalendarView({
   }
 
   const getDayInfo = (day: CycleDay, type: 'existing' | 'placeholder') => {
-    // Check legacy medications
-    const hasLegacyMedications = day.medications && day.medications.length > 0
-    
-    // Check new medication system
+    // Check medication system
     const schedule = getMedicationScheduleByCycleId(cycle.id)
     const dailyStatus = getDailyMedicationStatus(cycle.id, day.cycleDay)
     const scheduledMedications = schedule?.medications.filter(
@@ -65,11 +61,9 @@ export function CycleCalendarView({
     ) || []
     const daySpecificMedications = dailyStatus?.daySpecificMedications || []
     
-    const totalMedicationCount = (hasLegacyMedications ? day.medications.length : 0) + 
-                                scheduledMedications.length + 
-                                daySpecificMedications.length
+    const totalMedicationCount = scheduledMedications.length + daySpecificMedications.length
     
-    const hasMedications = hasLegacyMedications || totalMedicationCount > 0
+    const hasMedications = totalMedicationCount > 0
     const hasClinicVisit = !!day.clinicVisit
     const hasFollicleSizes = !!day.follicleSizes
     const hasBloodwork = !!day.bloodwork && day.bloodwork.length > 0
@@ -112,8 +106,8 @@ export function CycleCalendarView({
         case "beta":
           return { 
             isClinicDay: true, 
-            styling: 'ring-2 ring-blue-500 bg-blue-50/50', 
-            badgeColor: 'bg-blue-600 text-white',
+            styling: 'ring-2 ring-indigo-500 bg-indigo-50/50', 
+            badgeColor: 'bg-indigo-600 text-white',
             displayName: 'BET'
           }
         case "iui":
@@ -349,30 +343,71 @@ export function CycleCalendarView({
       {/* Legend */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-wrap items-center gap-4 text-sm">
-            <div className="flex items-center gap-2">
-              <Pill className="h-4 w-4 text-primary" />
-              <span>Medications</span>
+          <div className="space-y-4">
+            {/* General Icons Legend */}
+            <div>
+              <h4 className="font-medium text-sm mb-2">Day Types</h4>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Pill className="h-4 w-4 text-primary" />
+                  <span>Medications</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Stethoscope className="h-4 w-4 text-primary" />
+                  <span>Clinic Visit</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Droplet className="h-4 w-4 text-primary" />
+                  <span>Follicle Measurements</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Droplet className="h-4 w-4 text-red-600" />
+                  <span>Bloodwork</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span>Notes</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 border-2 border-dashed rounded" />
+                  <span>No data</span>
+                </div>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 text-primary" />
-              <span>Clinic Visit</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Droplet className="h-4 w-4 text-primary" />
-              <span>Follicle Measurements</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Droplet className="h-4 w-4 text-red-600" />
-              <span>Bloodwork</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-primary" />
-              <span>Notes</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="w-4 h-4 border-2 border-dashed rounded" />
-              <span>No data</span>
+
+            {/* Clinic Visit Types Legend */}
+            <div>
+              <h4 className="font-medium text-sm mb-2">Clinic Visit Types</h4>
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-blue-600 text-white text-xs">BL</Badge>
+                  <span>Baseline</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-green-600 text-white text-xs">MON</Badge>
+                  <span>Monitoring</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-600 text-white text-xs">ER</Badge>
+                  <span>Egg Retrieval</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-pink-600 text-white text-xs">ET</Badge>
+                  <span>Embryo Transfer</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-indigo-600 text-white text-xs">BET</Badge>
+                  <span>Beta HCG Test</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-purple-600 text-white text-xs">IUI</Badge>
+                  <span>Intrauterine Insemination</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-orange-600 text-white text-xs">VIS</Badge>
+                  <span>Other Visit</span>
+                </div>
+              </div>
             </div>
           </div>
         </CardContent>

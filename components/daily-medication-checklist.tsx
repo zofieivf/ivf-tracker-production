@@ -2,14 +2,11 @@
 
 import { useState, useEffect } from "react"
 import { format, parseISO } from "date-fns"
-import { Clock, Pill, CheckCircle2, Circle, Edit3, Snowflake } from "lucide-react"
+import { Clock, Pill, CheckCircle2, Circle, Snowflake, Edit3 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { useIVFStore } from "@/lib/store"
 import type { ScheduledMedication, DailyMedicationStatus } from "@/lib/types"
@@ -30,19 +27,49 @@ interface MedicationStatus {
 }
 
 export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedicationChecklistProps) {
+  
   const { 
     getMedicationScheduleByCycleId, 
     getDailyMedicationStatus, 
     addDailyMedicationStatus, 
-    updateDailyMedicationStatus 
+    updateDailyMedicationStatus,
+    getCycleById,
+    dailyMedicationStatuses,
+    medicationSchedules
   } = useIVFStore()
   
-  const [editingMed, setEditingMed] = useState<string | null>(null)
-  const [tempDosage, setTempDosage] = useState("")
-  const [tempNotes, setTempNotes] = useState("")
+  const [editingTakenTime, setEditingTakenTime] = useState<{medicationId: string, type: 'scheduled' | 'daySpecific'} | null>(null)
+  const [tempTakenAt, setTempTakenAt] = useState("")
+  
   
   const schedule = getMedicationScheduleByCycleId(cycleId)
   const dailyStatus = getDailyMedicationStatus(cycleId, cycleDay)
+  const cycle = getCycleById(cycleId)
+  
+  // Determine if this cycle is in the past
+  const isCycleInPast = () => {
+    if (!cycle) return false
+    
+    const today = new Date()
+    today.setHours(0, 0, 0, 0) // Reset to start of day for comparison
+    
+    // If cycle has an end date, check if end date is before today
+    if (cycle.endDate) {
+      const endDate = new Date(cycle.endDate)
+      endDate.setHours(0, 0, 0, 0)
+      return endDate < today
+    }
+    
+    // If no end date but cycle status is completed or cancelled, consider it past
+    if (cycle.status === 'completed' || cycle.status === 'cancelled') {
+      return true
+    }
+    
+    return false
+  }
+  
+  const isPastCycle = isCycleInPast()
+  
   
   // Filter medications that should be active on this day
   const todaysMedications = schedule?.medications.filter(
@@ -125,13 +152,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     })
   }
 
-  const markAsSkipped = (scheduledMedicationId: string) => {
-    updateMedicationStatus(scheduledMedicationId, {
-      taken: false,
-      skipped: true,
-      takenAt: undefined,
-    })
-  }
 
   const undoStatus = (scheduledMedicationId: string) => {
     updateMedicationStatus(scheduledMedicationId, {
@@ -141,25 +161,42 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     })
   }
 
-  const openEdit = (medication: ScheduledMedication) => {
-    const status = dailyStatus?.medications.find(m => m.scheduledMedicationId === medication.id)
-    setTempDosage(status?.actualDosage || medication.dosage)
-    setTempNotes(status?.notes || "")
-    setEditingMed(medication.id)
+  const openEditTakenTime = (medicationId: string, type: 'scheduled' | 'daySpecific') => {
+    let currentTakenAt = ""
+    
+    if (type === 'scheduled') {
+      const status = getMedicationStatus(medicationId)
+      currentTakenAt = status?.takenAt || new Date().toISOString()
+    } else {
+      const dayMed = daySpecificMeds.find(med => med.id === medicationId)
+      currentTakenAt = dayMed?.takenAt || new Date().toISOString()
+    }
+    
+    // Format for datetime-local input: YYYY-MM-DDTHH:mm
+    const formattedDateTime = currentTakenAt.slice(0, 16)
+    setTempTakenAt(formattedDateTime)
+    setEditingTakenTime({ medicationId, type })
   }
 
-  const saveEdit = () => {
-    if (!editingMed) return
+  const saveEditTakenTime = () => {
+    if (!editingTakenTime) return
     
-    updateMedicationStatus(editingMed, {
-      actualDosage: tempDosage,
-      notes: tempNotes,
-    })
+    const newTakenAt = new Date(tempTakenAt).toISOString()
     
-    setEditingMed(null)
-    setTempDosage("")
-    setTempNotes("")
+    if (editingTakenTime.type === 'scheduled') {
+      updateMedicationStatus(editingTakenTime.medicationId, {
+        takenAt: newTakenAt,
+      })
+    } else {
+      updateDaySpecificMedication(editingTakenTime.medicationId, {
+        takenAt: newTakenAt,
+      })
+    }
+    
+    setEditingTakenTime(null)
+    setTempTakenAt("")
   }
+
 
   const getMedicationStatus = (scheduledMedicationId: string): MedicationStatus | undefined => {
     return dailyStatus?.medications.find(m => m.scheduledMedicationId === scheduledMedicationId)
@@ -240,9 +277,20 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                         </div>
                         
                         {taken && status?.takenAt && (
-                          <span className="text-green-600">
-                            ✓ Taken at {format(parseISO(status.takenAt), "h:mm a")}
-                          </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-green-600">
+                                ✓ Taken at {format(parseISO(status.takenAt), "MMM d, h:mm a")}
+                              </span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => openEditTakenTime(medication.id, 'scheduled')}
+                                className="h-8 w-8 p-0 ml-2 bg-red-100 border-red-500"
+                                title="Edit taken time"
+                              >
+                                <Edit3 className="h-4 w-4" />
+                              </Button>
+                            </div>
                         )}
                         
                         {skipped && (
@@ -259,14 +307,6 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                   </div>
                   
                   <div className="flex items-center gap-1 ml-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => openEdit(medication)}
-                    >
-                      <Edit3 className="h-4 w-4" />
-                    </Button>
-                    
                     {!taken && !skipped && (
                       <>
                         <Button
@@ -324,6 +364,11 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
           </CardTitle>
           <CardDescription>
             Cycle Day {cycleDay} - {format(parseISO(date), "MMMM d, yyyy")}
+            {isPastCycle && (
+              <span className="block text-sm text-muted-foreground mt-1">
+                📅 This cycle has ended - viewing historical data
+              </span>
+            )}
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -337,6 +382,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                   const taken = status?.taken || false
                   const skipped = status?.skipped || false
                   const actualDosage = status?.actualDosage || medication.dosage
+                  
 
                   return (
                     <div
@@ -376,9 +422,20 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                               </div>
                               
                               {taken && status?.takenAt && (
-                                <span className="text-green-600">
-                                  ✓ Taken at {format(parseISO(status.takenAt), "h:mm a")}
-                                </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-green-600">
+                                      ✓ Taken at {format(parseISO(status.takenAt), "MMM d, h:mm a")}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditTakenTime(medication.id, 'scheduled')}
+                                      className="h-6 w-6 p-0 ml-1 hover:bg-gray-100"
+                                      title="Edit taken time"
+                                    >
+                                      <Edit3 className="h-3 w-3 text-gray-500" />
+                                    </Button>
+                                  </div>
                               )}
                               
                               {skipped && (
@@ -395,35 +452,18 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                         </div>
                         
                         <div className="flex items-center gap-1 ml-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(medication)}
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          
-                          {!taken && !skipped && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => markAsTaken(medication.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Mark as Taken
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => markAsSkipped(medication.id)}
-                              >
-                                Skip Today
-                              </Button>
-                            </>
+                          {!taken && !skipped && !isPastCycle && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => markAsTaken(medication.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Mark as Taken
+                            </Button>
                           )}
                           
-                          {(taken || skipped) && (
+                          {(taken || skipped) && !isPastCycle && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -477,9 +517,22 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                             </div>
                             
                             {medication.taken && medication.takenAt && (
-                              <span className="text-green-600">
-                                ✓ Taken at {format(parseISO(medication.takenAt), "h:mm a")}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600">
+                                  ✓ Taken at {format(parseISO(medication.takenAt), "MMM d, h:mm a")}
+                                </span>
+                                {!isPastCycle && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openEditTakenTime(medication.id, 'daySpecific')}
+                                    className="h-8 w-8 p-0 ml-2"
+                                    title="Edit taken time"
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             )}
                             
                             {medication.skipped && (
@@ -496,35 +549,22 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                       </div>
                       
                       <div className="flex items-center gap-1 ml-4">
-                        {!medication.taken && !medication.skipped && (
-                          <>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => updateDaySpecificMedication(medication.id, {
-                                taken: true,
-                                takenAt: new Date().toISOString(),
-                                skipped: false
-                              })}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Mark as Taken
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateDaySpecificMedication(medication.id, {
-                                skipped: true,
-                                taken: false,
-                                takenAt: undefined
-                              })}
-                            >
-                              Skip Today
-                            </Button>
-                          </>
+                        {!medication.taken && !medication.skipped && !isPastCycle && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => updateDaySpecificMedication(medication.id, {
+                              taken: true,
+                              takenAt: new Date().toISOString(),
+                              skipped: false
+                            })}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Mark as Taken
+                          </Button>
                         )}
                         
-                        {(medication.taken || medication.skipped) && (
+                        {(medication.taken || medication.skipped) && !isPastCycle && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -555,6 +595,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                   const taken = status?.taken || false
                   const skipped = status?.skipped || false
                   const actualDosage = status?.actualDosage || medication.dosage
+                  
 
                   return (
                     <div
@@ -594,9 +635,20 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                               </div>
                               
                               {taken && status?.takenAt && (
-                                <span className="text-green-600">
-                                  ✓ Taken at {format(parseISO(status.takenAt), "h:mm a")}
-                                </span>
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-green-600">
+                                      ✓ Taken at {format(parseISO(status.takenAt), "MMM d, h:mm a")}
+                                    </span>
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={() => openEditTakenTime(medication.id, 'scheduled')}
+                                      className="h-6 w-6 p-0 ml-1 hover:bg-gray-100"
+                                      title="Edit taken time"
+                                    >
+                                      <Edit3 className="h-3 w-3 text-gray-500" />
+                                    </Button>
+                                  </div>
                               )}
                               
                               {skipped && (
@@ -613,35 +665,18 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                         </div>
                         
                         <div className="flex items-center gap-1 ml-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEdit(medication)}
-                          >
-                            <Edit3 className="h-4 w-4" />
-                          </Button>
-                          
-                          {!taken && !skipped && (
-                            <>
-                              <Button
-                                variant="default"
-                                size="sm"
-                                onClick={() => markAsTaken(medication.id)}
-                                className="bg-green-600 hover:bg-green-700"
-                              >
-                                Mark as Taken
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => markAsSkipped(medication.id)}
-                              >
-                                Skip Today
-                              </Button>
-                            </>
+                          {!taken && !skipped && !isPastCycle && (
+                            <Button
+                              variant="default"
+                              size="sm"
+                              onClick={() => markAsTaken(medication.id)}
+                              className="bg-green-600 hover:bg-green-700"
+                            >
+                              Mark as Taken
+                            </Button>
                           )}
                           
-                          {(taken || skipped) && (
+                          {(taken || skipped) && !isPastCycle && (
                             <Button
                               variant="outline"
                               size="sm"
@@ -695,9 +730,22 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                             </div>
                             
                             {medication.taken && medication.takenAt && (
-                              <span className="text-green-600">
-                                ✓ Taken at {format(parseISO(medication.takenAt), "h:mm a")}
-                              </span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-green-600">
+                                  ✓ Taken at {format(parseISO(medication.takenAt), "MMM d, h:mm a")}
+                                </span>
+                                {!isPastCycle && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => openEditTakenTime(medication.id, 'daySpecific')}
+                                    className="h-8 w-8 p-0 ml-2"
+                                    title="Edit taken time"
+                                  >
+                                    <Edit3 className="h-4 w-4" />
+                                  </Button>
+                                )}
+                              </div>
                             )}
                             
                             {medication.skipped && (
@@ -714,35 +762,22 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
                       </div>
                       
                       <div className="flex items-center gap-1 ml-4">
-                        {!medication.taken && !medication.skipped && (
-                          <>
-                            <Button
-                              variant="default"
-                              size="sm"
-                              onClick={() => updateDaySpecificMedication(medication.id, {
-                                taken: true,
-                                takenAt: new Date().toISOString(),
-                                skipped: false
-                              })}
-                              className="bg-green-600 hover:bg-green-700"
-                            >
-                              Mark as Taken
-                            </Button>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => updateDaySpecificMedication(medication.id, {
-                                skipped: true,
-                                taken: false,
-                                takenAt: undefined
-                              })}
-                            >
-                              Skip Today
-                            </Button>
-                          </>
+                        {!medication.taken && !medication.skipped && !isPastCycle && (
+                          <Button
+                            variant="default"
+                            size="sm"
+                            onClick={() => updateDaySpecificMedication(medication.id, {
+                              taken: true,
+                              takenAt: new Date().toISOString(),
+                              skipped: false
+                            })}
+                            className="bg-green-600 hover:bg-green-700"
+                          >
+                            Mark as Taken
+                          </Button>
                         )}
                         
-                        {(medication.taken || medication.skipped) && (
+                        {(medication.taken || medication.skipped) && !isPastCycle && (
                           <Button
                             variant="outline"
                             size="sm"
@@ -765,48 +800,56 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
         </CardContent>
       </Card>
 
-      {/* Edit Medication Dialog */}
-      <Dialog open={!!editingMed} onOpenChange={() => setEditingMed(null)}>
+      {/* Edit Taken Time Dialog */}
+      <Dialog open={!!editingTakenTime} onOpenChange={() => setEditingTakenTime(null)}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Edit Medication</DialogTitle>
+            <DialogTitle>Edit Taken Time</DialogTitle>
             <DialogDescription>
-              Adjust dosage or add notes for today's medication
+              Adjust when this medication was actually taken
             </DialogDescription>
           </DialogHeader>
           
           <div className="space-y-4">
-            <div>
-              <label className="text-sm font-medium">Dosage</label>
-              <Input
-                value={tempDosage}
-                onChange={(e) => setTempDosage(e.target.value)}
-                placeholder="Enter dosage"
-              />
-            </div>
-            
-            <div>
-              <label className="text-sm font-medium">Notes</label>
-              <Textarea
-                value={tempNotes}
-                onChange={(e) => setTempNotes(e.target.value)}
-                placeholder="Any notes about this medication..."
-                rows={3}
-              />
+            <div className="space-y-3">
+              <label className="text-sm font-medium">When did you take this medication?</label>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Date</label>
+                <Input
+                  type="date"
+                  value={tempTakenAt.slice(0, 10)}
+                  onChange={(e) => setTempTakenAt(e.target.value + 'T' + (tempTakenAt.slice(11) || '08:00'))}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Time</label>
+                <Input
+                  type="time"
+                  value={tempTakenAt.slice(11, 16)}
+                  onChange={(e) => setTempTakenAt(tempTakenAt.slice(0, 10) + 'T' + e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                💡 Adjust to when you actually took the medication
+              </p>
             </div>
           </div>
           
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingMed(null)}>
+            <Button variant="outline" onClick={() => setEditingTakenTime(null)}>
               Cancel
             </Button>
-            <Button onClick={saveEdit}>
-              Save Changes
+            <Button onClick={saveEditTakenTime}>
+              Save Time
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
     </>
   )
 }

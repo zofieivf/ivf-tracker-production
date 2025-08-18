@@ -454,10 +454,22 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                               <FormLabel>Start Day</FormLabel>
                               <FormControl>
                                 <Input 
-                                  type="number" 
+                                  type="text" 
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   placeholder="Enter day" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value) || undefined)}
+                                  value={field.value || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    if (value === "") {
+                                      field.onChange(undefined)
+                                    } else if (/^\d+$/.test(value)) {
+                                      const numValue = parseInt(value)
+                                      if (numValue > 0) {
+                                        field.onChange(numValue)
+                                      }
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               {actualDate && (
@@ -482,10 +494,22 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                               <FormLabel>End Day</FormLabel>
                               <FormControl>
                                 <Input 
-                                  type="number" 
+                                  type="text" 
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
                                   placeholder="Enter day" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(Number(e.target.value) || undefined)}
+                                  value={field.value || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    if (value === "") {
+                                      field.onChange(undefined)
+                                    } else if (/^\d+$/.test(value)) {
+                                      const numValue = parseInt(value)
+                                      if (numValue > 0) {
+                                        field.onChange(numValue)
+                                      }
+                                    }
+                                  }}
                                 />
                               </FormControl>
                               {actualDate && (

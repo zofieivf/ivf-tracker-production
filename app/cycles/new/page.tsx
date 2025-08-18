@@ -14,7 +14,7 @@ import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, For
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
-import { Calendar } from "@/components/ui/calendar"
+import { MemoryCalendar } from "@/components/ui/memory-calendar"
 import { cn } from "@/lib/utils"
 import { useIVFStore } from "@/lib/store"
 
@@ -269,7 +269,7 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar
+                        <MemoryCalendar
                           mode="single"
                           selected={field.value}
                           onSelect={field.onChange}
@@ -278,6 +278,7 @@ export default function NewCyclePage() {
                           fromYear={1940}
                           toYear={new Date().getFullYear()}
                           initialFocus
+                          memoryKey="lastDateOfBirth"
                         />
                       </PopoverContent>
                     </Popover>
@@ -311,7 +312,7 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar 
+                        <MemoryCalendar 
                           mode="single" 
                           selected={field.value} 
                           onSelect={field.onChange} 
@@ -319,6 +320,7 @@ export default function NewCyclePage() {
                           captionLayout="dropdown"
                           fromYear={2020}
                           toYear={new Date().getFullYear() + 1}
+                          memoryKey="lastStartDate"
                         />
                       </PopoverContent>
                     </Popover>
@@ -340,6 +342,12 @@ export default function NewCyclePage() {
                           <Button
                             variant={"outline"}
                             className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
+                            onKeyDown={(e) => {
+                              if (e.key === "Delete" || e.key === "Backspace") {
+                                e.preventDefault()
+                                field.onChange(undefined)
+                              }
+                            }}
                           >
                             {field.value ? format(field.value, "PPP") : <span>Pick a date (optional)</span>}
                             <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
@@ -347,7 +355,7 @@ export default function NewCyclePage() {
                         </FormControl>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar 
+                        <MemoryCalendar 
                           mode="single" 
                           selected={field.value} 
                           onSelect={field.onChange} 
@@ -355,6 +363,7 @@ export default function NewCyclePage() {
                           captionLayout="dropdown"
                           fromYear={2020}
                           toYear={new Date().getFullYear() + 1}
+                          memoryKey="lastEndDate"
                         />
                       </PopoverContent>
                     </Popover>

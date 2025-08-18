@@ -71,38 +71,6 @@ export function getUnifiedMedicationsForDay(
   return result
 }
 
-// Convert unified medications back to legacy format (for backward compatibility during migration)
-export function unifiedToLegacyMedications(unified: UnifiedDayMedications) {
-  const legacy: any[] = []
-
-  // Add scheduled medications
-  unified.scheduled.forEach(({ medication, status }) => {
-    legacy.push({
-      name: medication.name,
-      dosage: status.actualDosage || medication.dosage,
-      hour: medication.hour,
-      minute: medication.minute,
-      ampm: medication.ampm,
-      taken: status.taken,
-      refrigerated: medication.refrigerated
-    })
-  })
-
-  // Add day-specific medications
-  unified.daySpecific.forEach(med => {
-    legacy.push({
-      name: med.name,
-      dosage: med.dosage,
-      hour: med.hour,
-      minute: med.minute,
-      ampm: med.ampm,
-      taken: med.taken,
-      refrigerated: med.refrigerated
-    })
-  })
-
-  return legacy
-}
 
 // Create a new daily medication status if none exists
 export function createEmptyDailyStatus(

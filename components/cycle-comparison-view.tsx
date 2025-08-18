@@ -115,33 +115,6 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
           })
         }
         
-        // Process legacy medications
-        if (!schedule && day.medications) {
-          day.medications.forEach(med => {
-            const dosageNumber = parseFloat((med.dosage || '').replace(/[^\d.]/g, '')) || 0
-            
-            if (!medicationMap.has(med.name)) {
-              medicationMap.set(med.name, {
-                name: med.name,
-                totalUnits: 0,
-                daysUsed: 0,
-                firstDay: day.cycleDay,
-                lastDay: day.cycleDay,
-                dailyDosages: [],
-                averageDailyDose: 0,
-                maxDailyDose: 0
-              })
-            }
-            
-            const medSummary = medicationMap.get(med.name)!
-            medSummary.totalUnits += dosageNumber
-            medSummary.daysUsed++
-            medSummary.firstDay = Math.min(medSummary.firstDay, day.cycleDay)
-            medSummary.lastDay = Math.max(medSummary.lastDay, day.cycleDay)
-            medSummary.dailyDosages.push({ day: day.cycleDay, dosage: dosageNumber })
-            medSummary.maxDailyDose = Math.max(medSummary.maxDailyDose, dosageNumber)
-          })
-        }
       })
       
       // Calculate averages and finalize medication summaries
