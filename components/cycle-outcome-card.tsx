@@ -486,6 +486,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                                   className={`${
                                     embryo.pgtA === 'Euploid' ? 'border-green-500 text-green-700 bg-green-50' :
                                     embryo.pgtA === 'Mosaic' ? 'border-yellow-500 text-yellow-700 bg-yellow-50' :
+                                    embryo.pgtA === 'Inconclusive' ? 'border-gray-500 text-gray-700 bg-gray-50' :
                                     'border-red-500 text-red-700 bg-red-50'
                                   }`}
                                 >
@@ -902,6 +903,7 @@ export function CycleOutcomeCard({ cycle }: CycleOutcomeCardProps) {
                                       <SelectItem value="Euploid">Euploid</SelectItem>
                                       <SelectItem value="Mosaic">Mosaic</SelectItem>
                                       <SelectItem value="Aneuploid">Aneuploid</SelectItem>
+                                      <SelectItem value="Inconclusive">Inconclusive</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 ) : (

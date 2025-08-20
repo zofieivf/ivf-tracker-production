@@ -30,10 +30,13 @@ export function UnifiedDailyMedicationChecklist({ cycleId, cycleDay, date }: Uni
   const [editingMed, setEditingMed] = useState<string | null>(null)
   const [tempDosage, setTempDosage] = useState("")
   const [tempNotes, setTempNotes] = useState("")
+  const [editingTakenTime, setEditingTakenTime] = useState<{medicationId: string, type: 'scheduled' | 'daySpecific'} | null>(null)
+  const [tempTakenAt, setTempTakenAt] = useState("")
   
   // Use unified medication system
   const medications = getUnifiedMedicationsForDay(cycleId, cycleDay)
   const { morning, evening } = groupMedicationsByTime(medications)
+  
   
   if (medications.totalCount === 0) {
     return (
@@ -116,6 +119,42 @@ export function UnifiedDailyMedicationChecklist({ cycleId, cycleDay, date }: Uni
     return scheduledTaken + daySpecificTaken
   }
 
+  const openEditTakenTime = (medicationId: string, type: 'scheduled' | 'daySpecific') => {
+    let currentTakenAt = ""
+    
+    if (type === 'scheduled') {
+      const scheduledItem = medications.scheduled.find(item => item.medication.id === medicationId)
+      currentTakenAt = scheduledItem?.status.takenAt || new Date().toISOString()
+    } else {
+      const dayMed = medications.daySpecific.find(med => med.id === medicationId)
+      currentTakenAt = dayMed?.takenAt || new Date().toISOString()
+    }
+    
+    // Format for datetime-local input: YYYY-MM-DDTHH:mm
+    const formattedDateTime = currentTakenAt.slice(0, 16)
+    setTempTakenAt(formattedDateTime)
+    setEditingTakenTime({ medicationId, type })
+  }
+
+  const saveEditTakenTime = () => {
+    if (!editingTakenTime) return
+    
+    const newTakenAt = new Date(tempTakenAt).toISOString()
+    
+    if (editingTakenTime.type === 'scheduled') {
+      updateScheduledMedicationStatus(editingTakenTime.medicationId, {
+        takenAt: newTakenAt,
+      })
+    } else {
+      updateDaySpecificMedicationStatus(editingTakenTime.medicationId, {
+        takenAt: newTakenAt,
+      })
+    }
+    
+    setEditingTakenTime(null)
+    setTempTakenAt("")
+  }
+
   const renderTimeSection = (timeLabel: string, timeMedications: any[]) => {
     if (timeMedications.length === 0) return null
 
@@ -133,6 +172,7 @@ export function UnifiedDailyMedicationChecklist({ cycleId, cycleDay, date }: Uni
             const medication = isScheduled ? item.medication : item
             const status = isScheduled ? item.status : { taken: item.taken, skipped: item.skipped }
             const medicationId = isScheduled ? item.medication.id : item.id
+            
             
             return (
               <div
@@ -180,8 +220,17 @@ export function UnifiedDailyMedicationChecklist({ cycleId, cycleDay, date }: Uni
                       <div className="text-sm text-muted-foreground">
                         {medication.hour}:{medication.minute} {medication.ampm}
                         {status.takenAt && (
-                          <span className="ml-2 text-green-600">
+                          <span className="ml-2 text-green-600 flex items-center gap-2">
                             • Taken at {format(new Date(status.takenAt), "h:mm a")}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => openEditTakenTime(medicationId, isScheduled ? 'scheduled' : 'daySpecific')}
+                              className="h-6 w-6 p-0 hover:bg-gray-100"
+                              title="Edit taken time"
+                            >
+                              <Edit3 className="h-3 w-3 text-gray-500" />
+                            </Button>
                           </span>
                         )}
                       </div>
@@ -287,6 +336,57 @@ export function UnifiedDailyMedicationChecklist({ cycleId, cycleDay, date }: Uni
               }
             }}>
               Save Changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Taken Time Dialog */}
+      <Dialog open={!!editingTakenTime} onOpenChange={() => setEditingTakenTime(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Taken Time</DialogTitle>
+            <DialogDescription>
+              Adjust when this medication was actually taken
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <label className="text-sm font-medium">When did you take this medication?</label>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Date</label>
+                <Input
+                  type="date"
+                  value={tempTakenAt.slice(0, 10)}
+                  onChange={(e) => setTempTakenAt(e.target.value + 'T' + (tempTakenAt.slice(11) || '08:00'))}
+                  className="w-full"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <label className="text-xs font-medium text-muted-foreground">Time</label>
+                <Input
+                  type="time"
+                  value={tempTakenAt.slice(11, 16)}
+                  onChange={(e) => setTempTakenAt(tempTakenAt.slice(0, 10) + 'T' + e.target.value)}
+                  className="w-full"
+                />
+              </div>
+              
+              <p className="text-xs text-muted-foreground">
+                💡 Adjust to when you actually took the medication
+              </p>
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingTakenTime(null)}>
+              Cancel
+            </Button>
+            <Button onClick={saveEditTakenTime}>
+              Save Time
             </Button>
           </DialogFooter>
         </DialogContent>

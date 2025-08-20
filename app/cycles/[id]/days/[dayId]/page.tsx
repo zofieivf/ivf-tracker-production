@@ -4,18 +4,18 @@ import { useEffect, useState, use } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO } from "date-fns"
-import { ArrowLeft, Edit, Pill, Droplet, Stethoscope, FileText, ChevronLeft, ChevronRight } from "lucide-react"
+import { ArrowLeft, Edit, Droplet, Stethoscope, FileText, ChevronLeft, ChevronRight, Pill } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { useIVFStore } from "@/lib/store"
-import { DailyMedicationChecklist } from "@/components/daily-medication-checklist"
+import { CleanUnifiedDailyMedicationChecklist } from "@/components/clean-unified-daily-medication-checklist"
 import type { CycleDay } from "@/lib/types"
 
 export default function DayDetailPage({ params }: { params: Promise<{ id: string; dayId: string }> }) {
   const { id, dayId } = use(params)
   const router = useRouter()
-  const { getCycleById, getMedicationScheduleByCycleId, ensureScheduledDaysExist } = useIVFStore()
+  const { getCycleById, getMedicationScheduleByCycleId, ensureScheduledDaysExist, getDayMedications } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(id))
   const [day, setDay] = useState<CycleDay | undefined>(cycle?.days.find((d) => d.id === dayId))
   const [mounted, setMounted] = useState(false)
@@ -44,6 +44,20 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
   }
 
   const { prevDay, nextDay } = getNavigationInfo()
+
+  // Check if there are medications scheduled for this day
+  const hasMedicationsForDay = () => {
+    if (!cycle || !day) return false
+    
+    try {
+      const dayMeds = getDayMedications(cycle.id, day.cycleDay, day.date)
+      console.log(`Day ${day.cycleDay} medications:`, dayMeds.medications.length, dayMeds.medications)
+      return dayMeds.medications.length > 0
+    } catch (error) {
+      console.error('Error checking medications for day:', error)
+      return false
+    }
+  }
 
   if (!mounted) return null
 
@@ -125,13 +139,24 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
       </div>
 
       <div className="space-y-6">
-        {/* Medication Checklist */}
-        <DailyMedicationChecklist 
-          cycleId={id} 
-          cycleDay={day.cycleDay} 
-          date={day.date} 
-        />
-        
+        {/* Medications Section */}
+        {hasMedicationsForDay() && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <Pill className="h-5 w-5 text-primary" />
+                <CardTitle>Medications</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <CleanUnifiedDailyMedicationChecklist 
+                cycleId={id}
+                cycleDay={day.cycleDay}
+                date={day.date}
+              />
+            </CardContent>
+          </Card>
+        )}
 
         <div className="grid gap-6 md:grid-cols-2">
 

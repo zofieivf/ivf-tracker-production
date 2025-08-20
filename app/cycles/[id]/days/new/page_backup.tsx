@@ -1,0 +1,883 @@
+"use client"
+
+import React, { useState, use } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
+import Link from "next/link"
+import { z } from "zod"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { useForm } from "react-hook-form"
+import { format, parseISO } from "date-fns"
+import { ArrowLeft, Plus, Trash } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
+import { Textarea } from "@/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { useIVFStore } from "@/lib/store"
+import { v4 as uuidv4 } from "uuid"
+
+
+const clinicVisitSchema = z.object({
+  type: z.enum(["baseline", "monitoring", "retrieval", "transfer", "beta", "iui", "other"]),
+  notes: z.string().optional(),
+  betaHcgValue: z.number().optional(),
+  betaHcgUnit: z.string().optional(),
+})
+
+const follicleSizesSchema = z.object({
+  left: z.array(z.number()).default([]),
+  right: z.array(z.number()).default([]),
+  liningCheck: z.boolean().default(false),
+  liningThickness: z.number().optional(),
+}).refine((data) => {
+  if (data.liningCheck && !data.liningThickness) {
+    return false
+  }
+  return true
+}, {
+  message: "Endometrial lining measurement is required when lining check is selected",
+  path: ["liningThickness"]
+})
+
+const bloodworkSchema = z.array(
+  z.object({
+    test: z.string().min(1, "Test name is required"),
+    value: z.string().min(1, "Value is required"),
+    unit: z.string().optional(),
+  }),
+)
+
+const formSchema = z.object({
+  hasClinicVisit: z.boolean().default(false),
+  clinicVisit: clinicVisitSchema.optional(),
+  hasFollicleSizes: z.boolean().default(false),
+  follicleSizes: follicleSizesSchema.optional(),
+  hasBloodwork: z.boolean().default(false),
+  bloodwork: bloodworkSchema.default([]),
+  notes: z.string().optional(),
+})
+
+export default function NewDayPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const dayNumber = searchParams.get("day")
+  const dateString = searchParams.get("date")
+
+  const { getCycleById, addDay } = useIVFStore()
+  const cycle = getCycleById(id)
+
+  const [bloodworkResults, setBloodworkResults] = useState<
+    { id: string; test: string; value: string; unit?: string }[]
+  >([])
+  const [leftFollicles, setLeftFollicles] = useState<string>("")
+  const [rightFollicles, setRightFollicles] = useState<string>("")
+
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      hasClinicVisit: false,
+      hasFollicleSizes: false,
+      hasBloodwork: false,
+      bloodwork: [],
+      follicleSizes: {
+        liningCheck: false,
+        liningThickness: undefined,
+      },
+    },
+  })
+
+  const watchLiningCheck = form.watch("follicleSizes.liningCheck")
+
+  if (!cycle) {
+    return (
+      <div className="container max-w-4xl py-10">
+        <div className="flex flex-col items-center justify-center py-20">
+          <h2 className="text-2xl font-bold mb-2">Cycle not found</h2>
+          <p className="text-muted-foreground mb-6">The cycle you're looking for doesn't exist</p>
+          <Button asChild>
+            <Link href="/">Go back home</Link>
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
+  // Use cycle goal to determine what monitoring options to show
+  const shouldShowLiningCheck = cycle.cycleGoal !== "retrieval"
+  const shouldShowFollicleMeasurements = cycle.cycleGoal !== "transfer"
+
+
+  function addBloodworkResult() {
+    const newResult = { id: uuidv4(), test: "", value: "", unit: "" }
+    setBloodworkResults([...bloodworkResults, newResult])
+  }
+
+  function updateBloodworkResult(id: string, field: string, value: any) {
+    setBloodworkResults(bloodworkResults.map((result) => (result.id === id ? { ...result, [field]: value } : result)))
+  }
+
+  function removeBloodworkResult(id: string) {
+    setBloodworkResults(bloodworkResults.filter((result) => result.id !== id))
+  }
+
+  function onSubmit(values: z.infer<typeof formSchema>) {
+    // Process follicle sizes
+    let follicleData = undefined
+    if (values.hasFollicleSizes) {
+      const left = leftFollicles
+        .split(",")
+        .map((size) => Number.parseFloat(size.trim()))
+        .filter((size) => !isNaN(size))
+      const right = rightFollicles
+        .split(",")
+        .map((size) => Number.parseFloat(size.trim()))
+        .filter((size) => !isNaN(size))
+
+      follicleData = {
+        left,
+        right,
+        liningThickness: form.getValues("follicleSizes.liningCheck") 
+          ? form.getValues("follicleSizes.liningThickness")
+          : undefined,
+      }
+    }
+
+    // Calculate the correct date based on cycle start date and day number
+    const cycleDay = Number.parseInt(dayNumber || "1")
+    let calculatedDate = dateString
+    
+    if (!calculatedDate && cycle) {
+      // Calculate date as cycle start date + (cycleDay - 1) days
+      const startDate = new Date(cycle.startDate)
+      const dayDate = new Date(startDate)
+      dayDate.setDate(startDate.getDate() + (cycleDay - 1))
+      calculatedDate = dayDate.toISOString()
+    }
+
+    // Create new day
+    const newDay = {
+      id: uuidv4(),
+      date: calculatedDate || new Date().toISOString(),
+      cycleDay,
+      clinicVisit: values.hasClinicVisit ? values.clinicVisit : undefined,
+      follicleSizes: values.hasFollicleSizes ? follicleData : undefined,
+      bloodwork: values.hasBloodwork
+        ? bloodworkResults.filter((result) => result.test.trim() !== "" && result.value.trim() !== "")
+        : undefined,
+      notes: values.notes,
+    }
+
+    // Add the day
+    addDay(id, newDay)
+
+    // Add a small delay to ensure store state is fully updated before navigation
+    setTimeout(() => {
+      router.push(`/cycles/${id}`)
+    }, 100)
+  }
+
+  return (
+    <div className="container max-w-2xl py-10">
+      <Button variant="ghost" asChild className="mb-4 pl-0 hover:pl-0">
+        <Link href={`/cycles/${id}`} className="flex items-center gap-1">
+          <ArrowLeft className="h-4 w-4" />
+          Back to cycle
+        </Link>
+      </Button>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Add Day {dayNumber} Data</CardTitle>
+          <CardDescription>{dateString && format(parseISO(dateString), "EEEE, MMMM d, yyyy")}</CardDescription>
+        </CardHeader>
+
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)}>
+            <Tabs defaultValue="clinic">
+              <TabsList className="grid grid-cols-3 mx-6 mt-2">
+                <TabsTrigger value="clinic">Clinic Visit</TabsTrigger>
+                <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
+                <TabsTrigger value="notes">Notes</TabsTrigger>
+              </TabsList>
+
+              <CardContent className="p-6">
+                <TabsContent value="medications" className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <h3 className="text-lg font-medium">Medications</h3>
+                    <Button type="button" variant="outline" size="sm" onClick={addMedication}>
+                      <Plus className="h-4 w-4 mr-1" /> Add Medication
+                    </Button>
+                  </div>
+
+                  {medications.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      No medications added yet. Click the button above to add one.
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {medications.map((med, index) => (
+                        <div key={med.id} className="grid gap-4 p-4 border rounded-md">
+                          <div className="flex justify-between items-start">
+                            <h4 className="font-medium">Medication {index + 1}</h4>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeMedication(med.id)}
+                              className="h-8 w-8 p-0"
+                            >
+                              <Trash className="h-4 w-4" />
+                            </Button>
+                          </div>
+
+                          <div className="grid gap-4">
+                            <div className="grid grid-cols-2 gap-4">
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Name</label>
+                                <Input
+                                  value={med.name}
+                                  onChange={(e) => updateMedication(med.id, "name", e.target.value)}
+                                  placeholder="e.g., Gonal-F"
+                                />
+                              </div>
+                              <div className="space-y-2">
+                                <label className="text-sm font-medium">Dosage</label>
+                                <Input
+                                  value={med.dosage}
+                                  onChange={(e) => updateMedication(med.id, "dosage", e.target.value)}
+                                  placeholder="e.g., 225 IU"
+                                />
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Time to Take</label>
+                              <div className="grid grid-cols-3 gap-2">
+                                <Select
+                                  value={med.hour}
+                                  onValueChange={(value) => updateMedication(med.id, "hour", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Hour" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="1">1</SelectItem>
+                                    <SelectItem value="2">2</SelectItem>
+                                    <SelectItem value="3">3</SelectItem>
+                                    <SelectItem value="4">4</SelectItem>
+                                    <SelectItem value="5">5</SelectItem>
+                                    <SelectItem value="6">6</SelectItem>
+                                    <SelectItem value="7">7</SelectItem>
+                                    <SelectItem value="8">8</SelectItem>
+                                    <SelectItem value="9">9</SelectItem>
+                                    <SelectItem value="10">10</SelectItem>
+                                    <SelectItem value="11">11</SelectItem>
+                                    <SelectItem value="12">12</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={med.minute}
+                                  onValueChange={(value) => updateMedication(med.id, "minute", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Min" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="00">00</SelectItem>
+                                    <SelectItem value="15">15</SelectItem>
+                                    <SelectItem value="30">30</SelectItem>
+                                    <SelectItem value="45">45</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <Select
+                                  value={med.ampm}
+                                  onValueChange={(value) => updateMedication(med.id, "ampm", value)}
+                                >
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="AM/PM" />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="AM">AM</SelectItem>
+                                    <SelectItem value="PM">PM</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`taken-${med.id}`}
+                                checked={med.taken}
+                                onCheckedChange={(checked) => updateMedication(med.id, "taken", checked)}
+                              />
+                              <label htmlFor={`taken-${med.id}`} className="text-sm font-medium">
+                                Taken
+                              </label>
+                            </div>
+
+                            <div className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`refrigerated-${med.id}`}
+                                checked={med.refrigerated}
+                                onCheckedChange={(checked) => updateMedication(med.id, "refrigerated", checked)}
+                              />
+                              <label htmlFor={`refrigerated-${med.id}`} className="text-sm font-medium">
+                                Refrigerated
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </TabsContent>
+
+                <TabsContent value="clinic">
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="hasClinicVisit"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>Clinic Visit</FormLabel>
+                              <FormDescription>Did you have a clinic visit on this day?</FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {form.watch("hasClinicVisit") && (
+                      <div className="space-y-4 border rounded-md p-4">
+                        <FormField
+                          control={form.control}
+                          name="clinicVisit.type"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Visit Type</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger>
+                                    <SelectValue placeholder="Select visit type" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="baseline">Baseline</SelectItem>
+                                  <SelectItem value="monitoring">Monitoring</SelectItem>
+                                  <SelectItem value="retrieval">Egg Retrieval</SelectItem>
+                                  <SelectItem value="transfer">Embryo Transfer</SelectItem>
+                                  <SelectItem value="beta">Beta</SelectItem>
+                                  <SelectItem value="iui">IUI</SelectItem>
+                                  <SelectItem value="other">Other</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        <FormField
+                          control={form.control}
+                          name="clinicVisit.notes"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Visit Notes</FormLabel>
+                              <FormControl>
+                                <Textarea placeholder="Enter any notes about your clinic visit" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Beta HCG fields when clinic visit type is "beta" */}
+                        {form.watch("clinicVisit.type") === "beta" && (
+                          <div className="space-y-4 border rounded-md p-4 bg-blue-50">
+                            <h4 className="text-sm font-medium text-blue-900">Beta HCG Results</h4>
+                            
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <FormField
+                                control={form.control}
+                                name="clinicVisit.betaHcgValue"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Beta HCG Value</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="number"
+                                        step="0.1"
+                                        placeholder="e.g., 125.5"
+                                        {...field}
+                                        onChange={(e) => field.onChange(e.target.value === "" ? undefined : parseFloat(e.target.value))}
+                                        value={field.value || ""}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+
+                              <FormField
+                                control={form.control}
+                                name="clinicVisit.betaHcgUnit"
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel>Unit</FormLabel>
+                                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                      <FormControl>
+                                        <SelectTrigger>
+                                          <SelectValue placeholder="Select unit" />
+                                        </SelectTrigger>
+                                      </FormControl>
+                                      <SelectContent>
+                                        <SelectItem value="mIU/mL">mIU/mL</SelectItem>
+                                        <SelectItem value="IU/L">IU/L</SelectItem>
+                                        <SelectItem value="ng/mL">ng/mL</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Monitoring fields when clinic visit type is "monitoring" */}
+                        {form.watch("clinicVisit.type") === "monitoring" && (
+                          <div className="space-y-6 border rounded-md p-4 bg-green-50">
+                            <h4 className="text-sm font-medium text-green-900">Monitoring Results</h4>
+                            
+                            {/* Follicle Measurements */}
+                            {shouldShowFollicleMeasurements && (
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                  <FormField
+                                    control={form.control}
+                                    name="hasFollicleSizes"
+                                    render={({ field }) => (
+                                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                        <FormControl>
+                                          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                          <FormLabel>Follicle Measurements</FormLabel>
+                                          <FormDescription>Did you have follicle measurements on this day?</FormDescription>
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                {form.watch("hasFollicleSizes") && (
+                                  <div className="space-y-4 border rounded-md p-4 bg-white">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                      <div className="space-y-2">
+                                        <label className="text-sm font-medium">Left Ovary Follicles (mm)</label>
+                                        <Input
+                                          value={leftFollicles}
+                                          onChange={(e) => setLeftFollicles(e.target.value)}
+                                          placeholder="e.g., 18, 16, 14"
+                                        />
+                                        <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                                      </div>
+
+                                      <div className="space-y-2">
+                                        <label className="text-sm font-medium">Right Ovary Follicles (mm)</label>
+                                        <Input
+                                          value={rightFollicles}
+                                          onChange={(e) => setRightFollicles(e.target.value)}
+                                          placeholder="e.g., 17, 15, 13"
+                                        />
+                                        <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Lining Check */}
+                            {shouldShowLiningCheck && (
+                              <div className="space-y-4">
+                                <div className="flex items-center space-x-2">
+                                  <FormField
+                                    control={form.control}
+                                    name="follicleSizes.liningCheck"
+                                    render={({ field }) => (
+                                      <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                        <FormControl>
+                                          <Checkbox
+                                            checked={field.value}
+                                            onCheckedChange={field.onChange}
+                                          />
+                                        </FormControl>
+                                        <div className="space-y-1 leading-none">
+                                          <FormLabel>
+                                            Lining Check
+                                          </FormLabel>
+                                          <FormDescription>
+                                            Check if endometrial lining was measured
+                                          </FormDescription>
+                                        </div>
+                                      </FormItem>
+                                    )}
+                                  />
+                                </div>
+
+                                {watchLiningCheck && (
+                                  <div className="space-y-4 border rounded-md p-4 bg-white">
+                                    <FormField
+                                      control={form.control}
+                                      name="follicleSizes.liningThickness"
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel>Endometrial Lining (mm)</FormLabel>
+                                          <FormControl>
+                                            <Input
+                                              type="number"
+                                              step="0.1"
+                                              placeholder="e.g., 8.5"
+                                              {...field}
+                                              onChange={(e) =>
+                                                field.onChange(e.target.value ? Number.parseFloat(e.target.value) : undefined)
+                                              }
+                                            />
+                                          </FormControl>
+                                          <FormMessage />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
+                            {/* Bloodwork Results */}
+                            <div className="space-y-4">
+                              <div className="flex items-center space-x-2">
+                                <FormField
+                                  control={form.control}
+                                  name="hasBloodwork"
+                                  render={({ field }) => (
+                                    <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                      <FormControl>
+                                        <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                                      </FormControl>
+                                      <div className="space-y-1 leading-none">
+                                        <FormLabel>Bloodwork Results</FormLabel>
+                                        <FormDescription>Did you have bloodwork done on this day?</FormDescription>
+                                      </div>
+                                    </FormItem>
+                                  )}
+                                />
+                              </div>
+
+                              {form.watch("hasBloodwork") && (
+                                <div className="space-y-4 border rounded-md p-4 bg-white">
+                                  <div className="flex justify-between items-center">
+                                    <h5 className="text-sm font-medium">Bloodwork Results</h5>
+                                    <Button type="button" variant="outline" size="sm" onClick={addBloodworkResult}>
+                                      <Plus className="h-4 w-4 mr-1" /> Add Result
+                                    </Button>
+                                  </div>
+
+                                  {bloodworkResults.length === 0 ? (
+                                    <div className="text-center py-4 text-muted-foreground text-sm border rounded-md">
+                                      No bloodwork results added yet. Click the button above to add one.
+                                    </div>
+                                  ) : (
+                                    <div className="space-y-4">
+                                      {bloodworkResults.map((result, index) => (
+                                        <div key={result.id} className="grid gap-4 p-4 border rounded-md">
+                                          <div className="flex justify-between items-start">
+                                            <h6 className="font-medium">Result {index + 1}</h6>
+                                            <Button
+                                              type="button"
+                                              variant="ghost"
+                                              size="sm"
+                                              onClick={() => removeBloodworkResult(result.id)}
+                                              className="h-8 w-8 p-0"
+                                            >
+                                              <Trash className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+
+                                          <div className="grid gap-4">
+                                            <div className="grid grid-cols-2 gap-4">
+                                              <div className="space-y-2">
+                                                <label className="text-sm font-medium">Test</label>
+                                                <Input
+                                                  value={result.test}
+                                                  onChange={(e) => updateBloodworkResult(result.id, "test", e.target.value)}
+                                                  placeholder="e.g., Estradiol"
+                                                />
+                                              </div>
+                                              <div className="space-y-2">
+                                                <label className="text-sm font-medium">Value</label>
+                                                <Input
+                                                  value={result.value}
+                                                  onChange={(e) => updateBloodworkResult(result.id, "value", e.target.value)}
+                                                  placeholder="e.g., 250"
+                                                />
+                                              </div>
+                                            </div>
+
+                                            <div className="space-y-2">
+                                              <label className="text-sm font-medium">Unit</label>
+                                              <Input
+                                                value={result.unit}
+                                                onChange={(e) => updateBloodworkResult(result.id, "unit", e.target.value)}
+                                                placeholder="e.g., pg/mL"
+                                              />
+                                            </div>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="monitoring" className="space-y-6">
+                  {shouldShowFollicleMeasurements && (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <FormField
+                          control={form.control}
+                          name="hasFollicleSizes"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Follicle Measurements</FormLabel>
+                                <FormDescription>Did you have follicle measurements on this day?</FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {form.watch("hasFollicleSizes") && (
+                        <div className="space-y-4 border rounded-md p-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Left Ovary Follicles (mm)</label>
+                              <Input
+                                value={leftFollicles}
+                                onChange={(e) => setLeftFollicles(e.target.value)}
+                                placeholder="e.g., 18, 16, 14"
+                              />
+                              <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-sm font-medium">Right Ovary Follicles (mm)</label>
+                              <Input
+                                value={rightFollicles}
+                                onChange={(e) => setRightFollicles(e.target.value)}
+                                placeholder="e.g., 17, 15, 13"
+                              />
+                              <p className="text-xs text-muted-foreground">Enter sizes separated by commas</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {shouldShowLiningCheck && (
+                    <div className="space-y-4">
+                      <div className="flex items-center space-x-2">
+                        <FormField
+                          control={form.control}
+                          name="follicleSizes.liningCheck"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>
+                                  Lining Check
+                                </FormLabel>
+                                <FormDescription>
+                                  Check if endometrial lining was measured
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      {watchLiningCheck && (
+                        <div className="space-y-4 border rounded-md p-4">
+                          <FormField
+                            control={form.control}
+                            name="follicleSizes.liningThickness"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Endometrial Lining (mm)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    type="number"
+                                    step="0.1"
+                                    placeholder="e.g., 8.5"
+                                    {...field}
+                                    onChange={(e) =>
+                                      field.onChange(e.target.value ? Number.parseFloat(e.target.value) : undefined)
+                                    }
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div className="flex items-center space-x-2">
+                      <FormField
+                        control={form.control}
+                        name="hasBloodwork"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                            </FormControl>
+                            <div className="space-y-1 leading-none">
+                              <FormLabel>Bloodwork Results</FormLabel>
+                              <FormDescription>Did you have bloodwork done on this day?</FormDescription>
+                            </div>
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    {form.watch("hasBloodwork") && (
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-center">
+                          <h3 className="text-sm font-medium">Bloodwork Results</h3>
+                          <Button type="button" variant="outline" size="sm" onClick={addBloodworkResult}>
+                            <Plus className="h-4 w-4 mr-1" /> Add Result
+                          </Button>
+                        </div>
+
+                        {bloodworkResults.length === 0 ? (
+                          <div className="text-center py-4 text-muted-foreground text-sm border rounded-md">
+                            No bloodwork results added yet. Click the button above to add one.
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {bloodworkResults.map((result, index) => (
+                              <div key={result.id} className="grid gap-4 p-4 border rounded-md">
+                                <div className="flex justify-between items-start">
+                                  <h4 className="font-medium">Result {index + 1}</h4>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => removeBloodworkResult(result.id)}
+                                    className="h-8 w-8 p-0"
+                                  >
+                                    <Trash className="h-4 w-4" />
+                                  </Button>
+                                </div>
+
+                                <div className="grid gap-4">
+                                  <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <label className="text-sm font-medium">Test</label>
+                                      <Input
+                                        value={result.test}
+                                        onChange={(e) => updateBloodworkResult(result.id, "test", e.target.value)}
+                                        placeholder="e.g., Estradiol"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <label className="text-sm font-medium">Value</label>
+                                      <Input
+                                        value={result.value}
+                                        onChange={(e) => updateBloodworkResult(result.id, "value", e.target.value)}
+                                        placeholder="e.g., 250"
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <label className="text-sm font-medium">Unit</label>
+                                    <Input
+                                      value={result.unit}
+                                      onChange={(e) => updateBloodworkResult(result.id, "unit", e.target.value)}
+                                      placeholder="e.g., pg/mL"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="notes">
+                  <FormField
+                    control={form.control}
+                    name="notes"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Notes</FormLabel>
+                        <FormControl>
+                          <Textarea
+                            placeholder="Enter any additional notes for this day"
+                            className="min-h-[200px]"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormDescription>Record any symptoms, feelings, or other observations</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </TabsContent>
+              </CardContent>
+            </Tabs>
+
+            <CardFooter className="flex justify-between border-t p-6">
+              <Button type="button" variant="outline" onClick={() => router.push(`/cycles/${id}`)}>
+                Cancel
+              </Button>
+              <Button type="submit">Save Day</Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+    </div>
+  )
+}

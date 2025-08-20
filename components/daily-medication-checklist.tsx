@@ -34,6 +34,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     addDailyMedicationStatus, 
     updateDailyMedicationStatus,
     getCycleById,
+    getUnifiedMedicationsForDay,
     dailyMedicationStatuses,
     medicationSchedules
   } = useIVFStore()
@@ -45,6 +46,7 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
   const schedule = getMedicationScheduleByCycleId(cycleId)
   const dailyStatus = getDailyMedicationStatus(cycleId, cycleDay)
   const cycle = getCycleById(cycleId)
+  const unifiedMeds = getUnifiedMedicationsForDay(cycleId, cycleDay)
   
   // Determine if this cycle is in the past
   const isCycleInPast = () => {
@@ -76,12 +78,12 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
     med => med.startDay <= cycleDay && med.endDay >= cycleDay
   ) || []
   
-  // Get day-specific medications early to check for early return
-  const daySpecificMeds = dailyStatus?.daySpecificMedications || []
+  // Get day-specific medications from unified system
+  const daySpecificMeds = unifiedMeds.daySpecific || []
 
   // Initialize daily status if it doesn't exist
   useEffect(() => {
-    if (todaysMedications.length > 0 && !dailyStatus) {
+    if ((todaysMedications.length > 0 || daySpecificMeds.length > 0) && !dailyStatus) {
       const initialStatus: DailyMedicationStatus = {
         id: crypto.randomUUID(),
         cycleId,
@@ -92,11 +94,12 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
           taken: false,
           skipped: false,
         })),
+        daySpecificMedications: [], // Will be populated by unified system
         createdAt: new Date().toISOString(),
       }
       addDailyMedicationStatus(initialStatus)
     }
-  }, [todaysMedications, dailyStatus, cycleId, cycleDay, date, addDailyMedicationStatus])
+  }, [todaysMedications, daySpecificMeds, dailyStatus, cycleId, cycleDay, date, addDailyMedicationStatus])
 
   if (!schedule) {
     return (
@@ -149,6 +152,14 @@ export function DailyMedicationChecklist({ cycleId, cycleDay, date }: DailyMedic
       taken: true,
       takenAt: new Date().toISOString(),
       skipped: false,
+    })
+  }
+
+  const markAsSkipped = (scheduledMedicationId: string) => {
+    updateMedicationStatus(scheduledMedicationId, {
+      taken: false,
+      skipped: true,
+      takenAt: undefined,
     })
   }
 

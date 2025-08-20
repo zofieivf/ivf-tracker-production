@@ -32,7 +32,7 @@ import { CycleCalendarView } from "@/components/cycle-calendar-view"
 export default function CyclePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
-  const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist } = useIVFStore()
+  const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist, migrateLegacyMedicationData } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(id))
   const [mounted, setMounted] = useState(false)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
@@ -197,12 +197,6 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
           </div>
           <div className="flex items-center gap-2">
             <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
-            <Button asChild variant="outline">
-              <Link href={`/cycles/${id}/medication-schedule`}>
-                <Pill className="h-4 w-4 mr-2" />
-                Medication Schedule
-              </Link>
-            </Button>
             <Button asChild>
               <Link href={`/cycles/${id}/edit`}>
                 <Edit className="h-4 w-4 mr-2" />

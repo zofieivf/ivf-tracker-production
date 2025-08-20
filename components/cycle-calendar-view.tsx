@@ -24,7 +24,7 @@ export function CycleCalendarView({
   selectedDays, 
   onToggleDay 
 }: CycleCalendarViewProps) {
-  const { getMedicationScheduleByCycleId, getDailyMedicationStatus } = useIVFStore()
+  const { getMedicationScheduleByCycleId, dailyMedicationStatuses } = useIVFStore()
 
   // Get existing days sorted by cycle day number
   const existingDays = cycle.days.sort((a, b) => a.cycleDay - b.cycleDay)
@@ -53,15 +53,23 @@ export function CycleCalendarView({
   }
 
   const getDayInfo = (day: CycleDay, type: 'existing' | 'placeholder') => {
-    // Check medication system
-    const schedule = getMedicationScheduleByCycleId(cycle.id)
-    const dailyStatus = getDailyMedicationStatus(cycle.id, day.cycleDay)
-    const scheduledMedications = schedule?.medications.filter(
-      med => med.startDay <= day.cycleDay && med.endDay >= day.cycleDay
-    ) || []
-    const daySpecificMedications = dailyStatus?.daySpecificMedications || []
+    // Use clean medication system to get medication count
+    const medicationSchedule = getMedicationScheduleByCycleId(cycle.id)
     
-    const totalMedicationCount = scheduledMedications.length + daySpecificMedications.length
+    let totalMedicationCount = 0
+    try {
+      const { getMedicationCountForDay } = require('@/lib/clean-medication-system')
+      totalMedicationCount = getMedicationCountForDay(
+        cycle.id, 
+        day.cycleDay, 
+        medicationSchedule, 
+        dailyMedicationStatuses || []
+      )
+      console.log(`Calendar Day ${day.cycleDay} medication count:`, totalMedicationCount)
+    } catch (error) {
+      console.error('Error getting medication count:', error)
+      totalMedicationCount = 0
+    }
     
     const hasMedications = totalMedicationCount > 0
     const hasClinicVisit = !!day.clinicVisit
@@ -407,6 +415,23 @@ export function CycleCalendarView({
                   <Badge className="bg-orange-600 text-white text-xs">VIS</Badge>
                   <span>Other Visit</span>
                 </div>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Medication Instructions */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+            <div className="flex items-start gap-3">
+              <Pill className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+              <div>
+                <h4 className="font-semibold text-blue-900 mb-2">Managing Medications</h4>
+                <p className="text-blue-800 text-sm">
+                  To edit or add medications, go to the <strong>Medication Schedule</strong> tab. You can set up recurring medications and track daily completion from there.
+                </p>
               </div>
             </div>
           </div>

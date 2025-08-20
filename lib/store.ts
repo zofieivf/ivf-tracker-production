@@ -3,6 +3,7 @@
 import { create } from "zustand"
 import { persist } from "zustand/middleware"
 import type { IVFCycle, CycleOutcome, CycleDay, ProcedureRecord, UserProfile, NaturalPregnancy, MedicationSchedule, DailyMedicationStatus } from "./types"
+import type { Medication, DayMedications, MedicationScheduleEntry } from "./medications"
 
 interface IVFStore {
   cycles: IVFCycle[]
@@ -11,6 +12,9 @@ interface IVFStore {
   medicationSchedules: MedicationSchedule[]
   dailyMedicationStatuses: DailyMedicationStatus[]
   userProfile: UserProfile | null
+  
+  // New Clean Medication System
+  medications: Medication[]
   addCycle: (cycle: IVFCycle) => void
   updateCycle: (id: string, cycle: Partial<IVFCycle>) => void
   deleteCycle: (id: string) => void
@@ -45,6 +49,29 @@ interface IVFStore {
   calculateDaysPostTransfer: (cycleId: string, currentDay: number) => number | null
   getBetaHcgFromDailyTracking: (cycleId: string) => { betaHcg1?: number; betaHcg1Day?: number; betaHcg2?: number; betaHcg2Day?: number }
   cleanupDuplicateDailyStatuses: (cycleId: string, cycleDay: number) => void
+  migrateLegacyMedicationData: (cycleId: string) => void
+
+  // New Clean Medication System Methods
+  addMedication: (medication: Omit<Medication, 'id' | 'createdAt'>) => void
+  updateMedication: (id: string, updates: Partial<Medication>) => void
+  deleteMedication: (id: string) => void
+  getMedication: (id: string) => Medication | undefined
+  getMedicationsForDay: (cycleId: string, cycleDay: number) => Medication[]
+  getMedicationsForCycle: (cycleId: string) => Medication[]
+  getDayMedications: (cycleId: string, cycleDay: number, date: string) => DayMedications
+  getCycleMedicationSchedule: (cycleId: string) => MedicationScheduleEntry[]
+  markMedicationTaken: (id: string, takenAt?: string) => void
+  markMedicationSkipped: (id: string) => void
+  resetMedicationStatus: (id: string) => void
+  duplicateMedicationToDay: (id: string, targetCycleDay: number) => void
+  migrateToNewMedicationSystem: (cycleId: string, options?: any) => { success: boolean; message: string; data?: any }
+  
+  // Clean Medication System Integration
+  getCleanMedicationScheduleOverview: (cycleId: string) => import('./clean-medication-system').MedicationScheduleOverview | null
+  markCleanMedicationTaken: (medicationId: string, cycleId: string, cycleDay: number, takenAt?: string) => void
+  markCleanMedicationSkipped: (medicationId: string, cycleId: string, cycleDay: number) => void
+  resetCleanMedicationStatus: (medicationId: string, cycleId: string, cycleDay: number) => void
+  addCleanDaySpecificMedication: (cycleId: string, cycleDay: number, date: string, medication: Omit<import('./clean-medication-system').DaySpecificMedication, 'id'>) => void
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -56,6 +83,7 @@ export const useIVFStore = create<IVFStore>()(
       medicationSchedules: [],
       dailyMedicationStatuses: [],
       userProfile: null,
+      medications: [],
 
       addCycle: (cycle) => {
         set((state) => ({
@@ -441,6 +469,67 @@ export const useIVFStore = create<IVFStore>()(
         return result
       },
 
+      // Migration function to move old medication data to new system
+      migrateLegacyMedicationData: (cycleId: string) => {
+        console.log("🔄 Starting legacy medication data migration for cycle:", cycleId)
+        
+        const state = get()
+        const cycle = state.cycles.find(c => c.id === cycleId)
+        if (!cycle) return
+        
+        let migratedCount = 0
+        
+        cycle.days.forEach(day => {
+          const legacyMedications = (day as any).medications
+          if (legacyMedications && Array.isArray(legacyMedications) && legacyMedications.length > 0) {
+            console.log(`🔄 Migrating ${legacyMedications.length} medications from Day ${day.cycleDay}`)
+            
+            // Get or create daily medication status
+            const dailyStatus = get().ensureDailyMedicationStatus(cycleId, day.cycleDay, day.date)
+            
+            // Convert legacy medications to day-specific medications
+            const validLegacyMeds = legacyMedications.filter((med: any) => med && med.name && med.name.trim() !== "")
+            
+            if (validLegacyMeds.length > 0 && (!dailyStatus.daySpecificMedications || dailyStatus.daySpecificMedications.length === 0)) {
+              const daySpecificMeds = validLegacyMeds.map((med: any) => ({
+                id: med.id || crypto.randomUUID(),
+                name: med.name,
+                dosage: med.dosage || "",
+                hour: med.hour || "",
+                minute: med.minute || "",
+                ampm: med.ampm || "",
+                refrigerated: med.refrigerated || false,
+                taken: med.taken || false,
+                skipped: false,
+                takenAt: med.taken ? new Date().toISOString() : undefined,
+                notes: med.notes
+              }))
+              
+              // Update daily medication status with migrated data
+              get().updateDailyMedicationStatus(dailyStatus.id, {
+                daySpecificMedications: daySpecificMeds,
+                updatedAt: new Date().toISOString(),
+              })
+              
+              migratedCount += validLegacyMeds.length
+            }
+            
+            // Remove the old medications field from the day
+            delete (day as any).medications
+          }
+        })
+        
+        if (migratedCount > 0) {
+          console.log(`🔄 Migration complete: ${migratedCount} medications migrated`)
+          // Update the cycle in the store to persist the changes
+          set((state) => ({
+            cycles: state.cycles.map(c => c.id === cycleId ? cycle : c)
+          }))
+        } else {
+          console.log("🔄 No legacy medication data found to migrate")
+        }
+      },
+
       cleanupDuplicateDailyStatuses: (cycleId, cycleDay) => {
         set((state) => {
           const matches = state.dailyMedicationStatuses.filter(
@@ -484,6 +573,341 @@ export const useIVFStore = create<IVFStore>()(
             dailyMedicationStatuses: cleaned
           }
         })
+      },
+
+      // New Clean Medication System Implementation
+      addMedication: (medicationData) => {
+        const { createMedicationId } = require('./medications')
+        const medication: Medication = {
+          ...medicationData,
+          id: createMedicationId(),
+          createdAt: new Date().toISOString()
+        }
+        
+        set((state) => ({
+          medications: [...state.medications, medication]
+        }))
+      },
+
+      updateMedication: (id, updates) => {
+        set((state) => ({
+          medications: state.medications.map(med => 
+            med.id === id 
+              ? { ...med, ...updates, updatedAt: new Date().toISOString() }
+              : med
+          )
+        }))
+      },
+
+      deleteMedication: (id) => {
+        set((state) => ({
+          medications: state.medications.filter(med => med.id !== id)
+        }))
+      },
+
+      getMedication: (id) => {
+        return get().medications.find(med => med.id === id)
+      },
+
+      getMedicationsForDay: (cycleId, cycleDay) => {
+        const { isMedicationActiveOnDay } = require('./medications')
+        return get().medications.filter(med => 
+          med.cycleId === cycleId && isMedicationActiveOnDay(med, cycleDay)
+        )
+      },
+
+      getMedicationsForCycle: (cycleId) => {
+        return get().medications.filter(med => med.cycleId === cycleId)
+      },
+
+      getDayMedications: (cycleId, cycleDay, date) => {
+        // Use clean system if available, otherwise fallback to current system
+        const { medicationSchedules, dailyMedicationStatuses } = get()
+        const { getCleanDayMedicationView } = require('./clean-medication-system')
+        
+        try {
+          return getCleanDayMedicationView(cycleId, cycleDay, date, medicationSchedules, dailyMedicationStatuses)
+        } catch (error) {
+          // Fallback to current system
+          const { getMedicationsForDay } = get()
+          const medications = getMedicationsForDay(cycleId, cycleDay)
+          
+          return {
+            cycleDay,
+            date,
+            medications,
+            completed: medications.filter(m => m.taken || m.skipped).length,
+            total: medications.length
+          }
+        }
+      },
+
+      getCycleMedicationSchedule: (cycleId) => {
+        const { getMedicationCompletionRate } = require('./medications')
+        const medications = get().medications.filter(med => med.cycleId === cycleId)
+        
+        // Group by medication template (name + time for scheduled, individual for one-time)
+        const groupedMeds = new Map<string, Medication[]>()
+        
+        medications.forEach(med => {
+          const key = med.type === 'scheduled' 
+            ? `${med.name}-${med.time}-${med.startDay}-${med.endDay}`
+            : med.id
+          
+          if (!groupedMeds.has(key)) {
+            groupedMeds.set(key, [])
+          }
+          groupedMeds.get(key)!.push(med)
+        })
+        
+        return Array.from(groupedMeds.entries()).map(([key, meds]) => {
+          const representative = meds[0]
+          const activeDays = representative.type === 'scheduled'
+            ? Array.from({ length: (representative.endDay || 1) - (representative.startDay || 1) + 1 }, 
+                (_, i) => (representative.startDay || 1) + i)
+            : [representative.cycleDay]
+          
+          return {
+            medication: representative,
+            activeDays,
+            completionRate: getMedicationCompletionRate(meds)
+          }
+        })
+      },
+
+      markMedicationTaken: (id, takenAt) => {
+        const { updateMedication } = get()
+        updateMedication(id, {
+          taken: true,
+          skipped: false,
+          takenAt: takenAt || new Date().toISOString()
+        })
+      },
+
+      markMedicationSkipped: (id) => {
+        const { updateMedication } = get()
+        updateMedication(id, {
+          taken: false,
+          skipped: true,
+          takenAt: undefined
+        })
+      },
+
+      resetMedicationStatus: (id) => {
+        const { updateMedication } = get()
+        updateMedication(id, {
+          taken: false,
+          skipped: false,
+          takenAt: undefined
+        })
+      },
+
+      duplicateMedicationToDay: (id, targetCycleDay) => {
+        const { getMedication, addMedication } = get()
+        const original = getMedication(id)
+        
+        if (original) {
+          addMedication({
+            ...original,
+            cycleDay: targetCycleDay,
+            type: 'one-time',
+            startDay: undefined,
+            endDay: undefined,
+            taken: false,
+            skipped: false,
+            takenAt: undefined
+          })
+        }
+      },
+
+      migrateToNewMedicationSystem: (cycleId, options = {}) => {
+        try {
+          const { migrateLegacyMedicationData, validateMigratedData, deduplicateMedications } = require('./medication-migration')
+          const state = get()
+          
+          console.log(`🔄 Starting migration to new medication system for cycle: ${cycleId}`)
+          
+          // Check if cycle exists
+          const cycle = state.cycles.find(c => c.id === cycleId)
+          if (!cycle) {
+            return { success: false, message: `Cycle ${cycleId} not found` }
+          }
+          
+          // Check if already migrated (has medications in new system)
+          const existingNewMeds = state.medications.filter(m => m.cycleId === cycleId)
+          if (existingNewMeds.length > 0) {
+            return { 
+              success: false, 
+              message: `Cycle ${cycleId} already has ${existingNewMeds.length} medications in new system` 
+            }
+          }
+          
+          // Perform migration
+          const migrationResult = migrateLegacyMedicationData(
+            cycleId,
+            state.medicationSchedules,
+            state.dailyMedicationStatuses,
+            { ...options, logProgress: true }
+          )
+          
+          // Validate migrated data
+          const validation = validateMigratedData(migrationResult.migratedMedications)
+          if (!validation.isValid) {
+            console.error('Migration validation failed:', validation.errors)
+            return { 
+              success: false, 
+              message: `Migration validation failed: ${validation.errors.join(', ')}`,
+              data: validation
+            }
+          }
+          
+          // Deduplicate if needed
+          const cleanMedications = deduplicateMedications(migrationResult.migratedMedications)
+          
+          // Add migrated medications to store
+          set((state) => ({
+            medications: [...state.medications, ...cleanMedications]
+          }))
+          
+          console.log(`✅ Migration successful:`, migrationResult.summary)
+          
+          if (validation.warnings.length > 0) {
+            console.warn('Migration warnings:', validation.warnings)
+          }
+          
+          return {
+            success: true,
+            message: `Successfully migrated ${migrationResult.summary.totalMigrated} medications`,
+            data: {
+              ...migrationResult.summary,
+              warnings: validation.warnings,
+              deduplicatedCount: migrationResult.migratedMedications.length - cleanMedications.length
+            }
+          }
+          
+        } catch (error) {
+          console.error('Migration error:', error)
+          return { 
+            success: false, 
+            message: `Migration failed: ${error instanceof Error ? error.message : 'Unknown error'}` 
+          }
+        }
+      },
+
+      // Clean Medication System Integration Implementation
+      getCleanMedicationScheduleOverview: (cycleId) => {
+        const { medicationSchedules, dailyMedicationStatuses, getCycleById } = get()
+        const { getCleanScheduleOverview } = require('./clean-medication-system')
+        
+        const cycle = getCycleById(cycleId)
+        if (!cycle) return null
+        
+        // Get all cycle days
+        const cycleDays = cycle.days.map(day => day.cycleDay).sort((a, b) => a - b)
+        
+        return getCleanScheduleOverview(
+          cycleId,
+          cycle.startDate,
+          cycleDays,
+          medicationSchedules,
+          dailyMedicationStatuses
+        )
+      },
+
+      markCleanMedicationTaken: (medicationId, cycleId, cycleDay, takenAt) => {
+        const { dailyMedicationStatuses } = get()
+        const { updateCleanMedicationStatus } = require('./clean-medication-system')
+        
+        try {
+          const updatedStatuses = updateCleanMedicationStatus(
+            medicationId,
+            cycleId,
+            cycleDay,
+            {
+              taken: true,
+              skipped: false,
+              takenAt: takenAt || new Date().toISOString()
+            },
+            dailyMedicationStatuses
+          )
+          
+          set((state) => ({
+            dailyMedicationStatuses: updatedStatuses
+          }))
+        } catch (error) {
+          console.error('Failed to mark medication as taken:', error)
+        }
+      },
+
+      markCleanMedicationSkipped: (medicationId, cycleId, cycleDay) => {
+        const { dailyMedicationStatuses } = get()
+        const { updateCleanMedicationStatus } = require('./clean-medication-system')
+        
+        try {
+          const updatedStatuses = updateCleanMedicationStatus(
+            medicationId,
+            cycleId,
+            cycleDay,
+            {
+              taken: false,
+              skipped: true,
+              takenAt: undefined
+            },
+            dailyMedicationStatuses
+          )
+          
+          set((state) => ({
+            dailyMedicationStatuses: updatedStatuses
+          }))
+        } catch (error) {
+          console.error('Failed to mark medication as skipped:', error)
+        }
+      },
+
+      resetCleanMedicationStatus: (medicationId, cycleId, cycleDay) => {
+        const { dailyMedicationStatuses } = get()
+        const { updateCleanMedicationStatus } = require('./clean-medication-system')
+        
+        try {
+          const updatedStatuses = updateCleanMedicationStatus(
+            medicationId,
+            cycleId,
+            cycleDay,
+            {
+              taken: false,
+              skipped: false,
+              takenAt: undefined
+            },
+            dailyMedicationStatuses
+          )
+          
+          set((state) => ({
+            dailyMedicationStatuses: updatedStatuses
+          }))
+        } catch (error) {
+          console.error('Failed to reset medication status:', error)
+        }
+      },
+
+      addCleanDaySpecificMedication: (cycleId, cycleDay, date, medication) => {
+        const { dailyMedicationStatuses } = get()
+        const { addDaySpecificMedication } = require('./clean-medication-system')
+        
+        try {
+          const updatedStatuses = addDaySpecificMedication(
+            cycleId,
+            cycleDay,
+            date,
+            medication,
+            dailyMedicationStatuses
+          )
+          
+          set((state) => ({
+            dailyMedicationStatuses: updatedStatuses
+          }))
+        } catch (error) {
+          console.error('Failed to add day-specific medication:', error)
+        }
       },
     }),
     {

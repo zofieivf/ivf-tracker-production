@@ -15,6 +15,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { useIVFStore } from "@/lib/store"
+import { CleanCycleMedicationOverview } from "@/components/clean-cycle-medication-overview"
+import { CleanUnifiedDailyMedicationChecklist } from "@/components/clean-unified-daily-medication-checklist"
 import type { MedicationSchedule, ScheduledMedication } from "@/lib/types"
 
 const medicationSchema = z.object({
@@ -83,6 +85,8 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
   const router = useRouter()
   const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showDaySelector, setShowDaySelector] = useState(false)
+  const [selectedDay, setSelectedDay] = useState<number | null>(null)
   
   const cycle = getCycleById(id)
   const existingSchedule = getMedicationScheduleByCycleId(id)
@@ -251,6 +255,41 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       </div>
 
       <div className="space-y-6">
+        {/* Medication Overview - Using Clean System */}
+        <CleanCycleMedicationOverview 
+          cycleId={id} 
+          onDaySelect={(day) => {
+            setSelectedDay(day)
+            setShowDaySelector(true)
+          }}
+        />
+
+        {/* Day-specific medication checklist when day is selected */}
+        {showDaySelector && selectedDay && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Day {selectedDay} Medications</CardTitle>
+              <CardDescription>
+                Daily medication tracking for cycle day {selectedDay}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <CleanUnifiedDailyMedicationChecklist 
+                cycleId={id}
+                selectedDay={selectedDay}
+              />
+              <div className="mt-4">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowDaySelector(false)}
+                >
+                  Close Day View
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Quick Templates */}
         <Card>
           <CardHeader>

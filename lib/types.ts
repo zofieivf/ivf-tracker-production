@@ -78,14 +78,13 @@ export interface BloodworkResult {
   test: string
   value: string
   unit?: string
-  reference?: string
 }
 
 export interface TransferEmbryo {
   id: string
   embryoDetails: "day3-embryo" | "day5-blastocyst" | "day6-blastocyst" | "day7-blastocyst"
   embryoGrade?: string
-  pgtATested?: "euploid" | "mosaic" | "not-tested"
+  pgtATested?: "euploid" | "mosaic" | "not-tested" | "inconclusive"
   embryoSex?: "M" | "F"
   retrievalCycleId?: string
 }
@@ -136,7 +135,7 @@ export interface EmbryoGrade {
   day5Grade?: string
   day6Grade?: string
   day7Grade?: string
-  pgtA?: "Euploid" | "Mosaic" | "Aneuploid"
+  pgtA?: "Euploid" | "Mosaic" | "Aneuploid" | "Inconclusive"
   pgtADetails?: string // For specific chromosome anomalies (e.g., "+21", "-16", "mosaic 45,X/46,XX")
   sex?: string
   pgtM?: string

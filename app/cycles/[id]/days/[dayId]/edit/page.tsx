@@ -9,11 +9,13 @@ export default function EditDayPage({ params }: { params: Promise<{ id: string; 
   const router = useRouter()
 
   return (
-    <UnifiedEditDay
-      cycleId={id}
-      dayId={dayId}
-      onSave={() => router.push(`/cycles/${id}/days/${dayId}`)}
-      onCancel={() => router.push(`/cycles/${id}/days/${dayId}`)}
-    />
+    <div className="container max-w-2xl py-10">
+      <UnifiedEditDay
+        cycleId={id}
+        dayId={dayId}
+        onSave={() => router.push(`/cycles/${id}/days/${dayId}`)}
+        onCancel={() => router.push(`/cycles/${id}/days/${dayId}`)}
+      />
+    </div>
   )
 }

@@ -45,7 +45,7 @@ const formSchema = z.object({
     id: z.string(),
     embryoDetails: z.enum(["day3-embryo", "day5-blastocyst", "day6-blastocyst", "day7-blastocyst"]),
     embryoGrade: z.string().optional(),
-    pgtATested: z.enum(["euploid", "mosaic", "not-tested"]).optional(),
+    pgtATested: z.enum(["euploid", "mosaic", "not-tested", "inconclusive"]).optional(),
     embryoSex: z.enum(["M", "F"]).optional(),
     retrievalCycleId: z.string().optional(),
   })).optional(),
@@ -539,6 +539,7 @@ export default function NewCyclePage() {
                               <SelectItem value="euploid">Euploid</SelectItem>
                               <SelectItem value="mosaic">Mosaic</SelectItem>
                               <SelectItem value="not-tested">Not Tested</SelectItem>
+                              <SelectItem value="inconclusive">Inconclusive</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormDescription>PGT-A (genetic testing) result for this embryo</FormDescription>

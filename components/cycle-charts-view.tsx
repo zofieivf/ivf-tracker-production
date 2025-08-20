@@ -43,6 +43,17 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
   
   const dateRange = getCycleDateRange()
   
+  // Helper to get egg retrieval date for context
+  const getEggRetrievalDate = () => {
+    const retrievalDay = cycle.days.find(day => day.clinicVisit?.type === "retrieval")
+    if (retrievalDay) {
+      return format(parseISO(retrievalDay.date), "MMM d, yyyy")
+    }
+    return null
+  }
+  
+  const retrievalDate = getEggRetrievalDate()
+  
   // For transfer cycles, show different content
   if (isTransferCycle) {
     // Process hormone data for transfer cycles (same logic as retrieval cycles)
@@ -122,6 +133,21 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
 
     return (
       <div className="space-y-6">
+        {/* Cycle Context Header */}
+        {retrievalDate && (
+          <Card className="bg-blue-50/50 border-blue-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-blue-600" />
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Egg Retrieval Date</p>
+                  <p className="text-lg font-semibold text-blue-800">{retrievalDate}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        
         {/* Hormone Level Charts for Transfer Cycles */}
         {transferHormoneData.some((d) => d.estradiol !== undefined) && (
           <Card>
@@ -826,6 +852,21 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
 
   return (
     <div className="space-y-6">
+      {/* Cycle Context Header */}
+      {retrievalDate && (
+        <Card className="bg-blue-50/50 border-blue-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Target className="h-5 w-5 text-blue-600" />
+              <div>
+                <p className="text-sm font-medium text-blue-900">Egg Retrieval Date</p>
+                <p className="text-lg font-semibold text-blue-800">{retrievalDate}</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      
       {/* Individual Hormone Charts */}
       {hormoneData.some((d) => d.estradiol !== undefined) && (
         <Card>
@@ -834,7 +875,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               <Activity className="h-5 w-5 text-primary" />
               <div>
                 <CardTitle>Estradiol Levels</CardTitle>
-                <CardDescription>Estradiol (E2) hormone trends throughout the cycle ({dateRange}) ({dateRange})</CardDescription>
+                <CardDescription>Estradiol (E2) hormone trends throughout the cycle ({dateRange})</CardDescription>
               </div>
             </div>
           </CardHeader>
