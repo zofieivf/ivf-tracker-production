@@ -401,3 +401,58 @@ export function updateMedicationStatus(
     updatedAt: new Date().toISOString()
   }
 }
+
+// Update day-specific medication
+export function updateDaySpecificMedication(
+  cycleId: string,
+  cycleDay: number,
+  medicationId: string,
+  medication: Partial<Omit<DaySpecificMedication, 'id'>>,
+  existingStatuses: DailyMedicationStatus[]
+): DailyMedicationStatus[] {
+  const targetStatus = existingStatuses.find(
+    status => status.cycleId === cycleId && status.cycleDay === cycleDay
+  )
+
+  if (!targetStatus || !targetStatus.daySpecificMedications) {
+    return existingStatuses
+  }
+
+  const updatedMedications = targetStatus.daySpecificMedications.map(med =>
+    med.id === medicationId ? { ...med, ...medication } : med
+  )
+
+  return existingStatuses.map(status =>
+    status.id === targetStatus.id
+      ? { ...status, daySpecificMedications: updatedMedications, updatedAt: new Date().toISOString() }
+      : status
+  )
+}
+
+// Delete day-specific medication
+export function deleteDaySpecificMedication(
+  cycleId: string,
+  cycleDay: number,
+  medicationId: string,
+  existingStatuses: DailyMedicationStatus[]
+): DailyMedicationStatus[] {
+  const targetStatus = existingStatuses.find(
+    status => status.cycleId === cycleId && status.cycleDay === cycleDay
+  )
+
+  if (!targetStatus || !targetStatus.daySpecificMedications) {
+    return existingStatuses
+  }
+
+  const filteredMedications = targetStatus.daySpecificMedications.filter(med => med.id !== medicationId)
+
+  return existingStatuses.map(status =>
+    status.id === targetStatus.id
+      ? { 
+          ...status, 
+          daySpecificMedications: filteredMedications.length > 0 ? filteredMedications : [],
+          updatedAt: new Date().toISOString() 
+        }
+      : status
+  )
+}

@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, use } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { format, parseISO, differenceInDays } from "date-fns"
 import { ArrowLeft, Calendar, Edit, Plus, User, Target, Trash2, Pill } from "lucide-react"
@@ -32,11 +32,13 @@ import { CycleCalendarView } from "@/components/cycle-calendar-view"
 export default function CyclePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { getCycleById, cycles, deleteDay, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist, migrateLegacyMedicationData } = useIVFStore()
   const [cycle, setCycle] = useState(getCycleById(id))
   const [mounted, setMounted] = useState(false)
   const [isDeleteMode, setIsDeleteMode] = useState(false)
   const [selectedDays, setSelectedDays] = useState<Set<string>>(new Set())
+  const [activeTab, setActiveTab] = useState("days")
 
   useEffect(() => {
     setMounted(true)
@@ -46,6 +48,14 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
     ensureAllDaysExist(id)
     setCycle(getCycleById(id))
   }, [id, getCycleById, cycles, dailyMedicationStatuses, ensureScheduledDaysExist, ensureAllDaysExist]) // Add dailyMedicationStatuses to dependency array
+
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['days', 'medications', 'outcome', 'charts', 'costs'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
 
   const handleToggleDeleteMode = () => {
     setIsDeleteMode(!isDeleteMode)
@@ -235,7 +245,7 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
         </div>
 
         {/* Main Content */}
-        <Tabs defaultValue="days" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-5">
             <TabsTrigger value="days">Daily Tracking</TabsTrigger>
             <TabsTrigger value="medications">Medications</TabsTrigger>

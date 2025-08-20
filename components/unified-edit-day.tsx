@@ -35,7 +35,13 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
 
   // Form state - no medications
   const [clinicVisit, setClinicVisit] = useState<ClinicVisit | undefined>()
-  const [follicleMeasurements, setFollicleMeasurements] = useState<FollicleMeasurement[]>([])
+  const [follicleMeasurements, setFollicleMeasurements] = useState<FollicleMeasurement>({
+    left: [],
+    right: []
+  })
+  const [leftFolliclesInput, setLeftFolliclesInput] = useState<string>("")
+  const [rightFolliclesInput, setRightFolliclesInput] = useState<string>("")
+  const [liningThickness, setLiningThickness] = useState<number | undefined>()
   const [bloodworkResults, setBloodworkResults] = useState<BloodworkResult[]>([])
   const [notes, setNotes] = useState("")
 
@@ -44,7 +50,14 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
     if (day) {
       // Load existing data
       setClinicVisit(day.clinicVisit)
-      setFollicleMeasurements(day.follicleMeasurements || [])
+      const existingFollicles = day.follicleSizes || {
+        left: [],
+        right: []
+      }
+      setFollicleMeasurements(existingFollicles)
+      setLeftFolliclesInput(existingFollicles.left.join(', '))
+      setRightFolliclesInput(existingFollicles.right.join(', '))
+      setLiningThickness(day.liningThickness)
       setBloodworkResults(day.bloodwork || [])
       setNotes(day.notes || "")
     }
@@ -59,7 +72,8 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
     const updatedDay: CycleDay = {
       ...day,
       clinicVisit: clinicVisit,
-      follicleMeasurements: follicleMeasurements.length > 0 ? follicleMeasurements : undefined,
+      follicleSizes: (follicleMeasurements.left.length > 0 || follicleMeasurements.right.length > 0) ? follicleMeasurements : undefined,
+      liningThickness: liningThickness,
       bloodwork: bloodworkResults.length > 0 ? bloodworkResults : undefined,
       notes: notes.trim() || undefined,
     }
@@ -68,28 +82,40 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
     onSave()
   }
 
-  const addFollicleMeasurement = () => {
-    setFollicleMeasurements([...follicleMeasurements, {
-      id: crypto.randomUUID(),
-      ovary: "left",
-      size: 0
-    }])
+  // Helper functions to parse comma-separated numbers
+  const parseCommaSeparatedNumbers = (input: string): number[] => {
+    if (!input.trim()) return []
+    return input.split(',')
+      .map(s => parseFloat(s.trim()))
+      .filter(n => !isNaN(n) && n > 0)
   }
 
-  const updateFollicleMeasurement = (index: number, field: keyof FollicleMeasurement, value: any) => {
-    const updated = [...follicleMeasurements]
-    updated[index] = { ...updated[index], [field]: value }
-    setFollicleMeasurements(updated)
+  const handleFollicleInput = (side: 'left' | 'right', value: string) => {
+    // Store the raw input
+    if (side === 'left') {
+      setLeftFolliclesInput(value)
+    } else {
+      setRightFolliclesInput(value)
+    }
+    
+    // Parse and update the measurements
+    const numbers = parseCommaSeparatedNumbers(value)
+    setFollicleMeasurements(prev => ({
+      ...prev,
+      [side]: numbers
+    }))
   }
 
-  const removeFollicleMeasurement = (index: number) => {
-    setFollicleMeasurements(follicleMeasurements.filter((_, i) => i !== index))
+  const handleLiningThickness = (value: string) => {
+    const thickness = parseFloat(value) || undefined
+    setLiningThickness(thickness)
   }
 
   const addBloodworkResult = () => {
     setBloodworkResults([...bloodworkResults, {
       id: crypto.randomUUID(),
       test: "",
+      customTestName: "",
       value: "",
       unit: ""
     }])
@@ -106,8 +132,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
   }
 
   const commonBloodworkTests = [
-    "Estradiol (E2)", "LH", "FSH", "Progesterone", "hCG",
-    "Testosterone", "Prolactin", "Thyroid (TSH)", "AMH"
+    "Estradiol (E2)", "LH", "Progesterone", "Beta HCG", "Others"
   ]
 
   return (
@@ -224,55 +249,57 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
       {/* Follicle Measurements */}
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Follicle Measurements</CardTitle>
-            <Button variant="outline" size="sm" onClick={addFollicleMeasurement}>
-              <Plus className="h-4 w-4 mr-1" />
-              Add Measurement
-            </Button>
-          </div>
+          <CardTitle>Follicle Measurements</CardTitle>
         </CardHeader>
         <CardContent>
-          {follicleMeasurements.length === 0 ? (
-            <p className="text-muted-foreground text-center py-4">
-              No follicle measurements recorded
-            </p>
-          ) : (
-            <div className="space-y-3">
-              {follicleMeasurements.map((measurement, index) => (
-                <div key={measurement.id} className="flex items-center gap-4 p-3 border rounded">
-                  <Select
-                    value={measurement.ovary}
-                    onValueChange={(value: "left" | "right") => updateFollicleMeasurement(index, "ovary", value)}
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="left">Left</SelectItem>
-                      <SelectItem value="right">Right</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    type="number"
-                    step="0.1"
-                    value={measurement.size}
-                    onChange={(e) => updateFollicleMeasurement(index, "size", parseFloat(e.target.value) || 0)}
-                    placeholder="Size (mm)"
-                    className="w-24"
-                  />
-                  <span className="text-sm text-muted-foreground">mm</span>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeFollicleMeasurement(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              ))}
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Left Ovary Follicles (mm)</label>
+              <Input
+                placeholder="e.g., 12, 14, 16, 18 (comma-separated sizes)"
+                value={leftFolliclesInput}
+                onChange={(e) => handleFollicleInput('left', e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter follicle sizes separated by commas
+              </p>
             </div>
-          )}
+            
+            <div>
+              <label className="text-sm font-medium">Right Ovary Follicles (mm)</label>
+              <Input
+                placeholder="e.g., 10, 12, 15, 17 (comma-separated sizes)"
+                value={rightFolliclesInput}
+                onChange={(e) => handleFollicleInput('right', e.target.value)}
+                className="mt-1"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Enter follicle sizes separated by commas
+              </p>
+            </div>
+            
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Endometrial Lining Thickness */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Endometrial Lining Thickness</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div>
+            <label className="text-sm font-medium">Thickness (mm)</label>
+            <Input
+              type="number"
+              step="0.1"
+              placeholder="e.g., 8.5"
+              value={liningThickness || ''}
+              onChange={(e) => handleLiningThickness(e.target.value)}
+              className="mt-1 w-32"
+            />
+          </div>
         </CardContent>
       </Card>
 
@@ -295,37 +322,47 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
           ) : (
             <div className="space-y-3">
               {bloodworkResults.map((result, index) => (
-                <div key={result.id} className="grid grid-cols-4 gap-4 p-3 border rounded">
-                  <Select
-                    value={result.test}
-                    onValueChange={(value) => updateBloodworkResult(index, "test", value)}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Test" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {commonBloodworkTests.map(test => (
-                        <SelectItem key={test} value={test}>{test}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <Input
-                    value={result.value}
-                    onChange={(e) => updateBloodworkResult(index, "value", e.target.value)}
-                    placeholder="Value"
-                  />
-                  <Input
-                    value={result.unit || ""}
-                    onChange={(e) => updateBloodworkResult(index, "unit", e.target.value)}
-                    placeholder="Unit"
-                  />
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => removeBloodworkResult(index)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                <div key={result.id} className="space-y-3 p-3 border rounded">
+                  <div className="grid grid-cols-4 gap-4">
+                    <Select
+                      value={result.test}
+                      onValueChange={(value) => updateBloodworkResult(index, "test", value)}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Test" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {commonBloodworkTests.map(test => (
+                          <SelectItem key={test} value={test}>{test}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input
+                      value={result.value}
+                      onChange={(e) => updateBloodworkResult(index, "value", e.target.value)}
+                      placeholder="Value"
+                    />
+                    <Input
+                      value={result.unit || ""}
+                      onChange={(e) => updateBloodworkResult(index, "unit", e.target.value)}
+                      placeholder="Unit"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => removeBloodworkResult(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {result.test === "Others" && (
+                    <Input
+                      value={result.customTestName || ""}
+                      onChange={(e) => updateBloodworkResult(index, "customTestName", e.target.value)}
+                      placeholder="Enter custom test name"
+                      className="w-full"
+                    />
+                  )}
                 </div>
               ))}
             </div>

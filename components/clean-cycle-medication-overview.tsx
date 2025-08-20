@@ -7,13 +7,13 @@
 
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useState } from "react"
 import { format, parseISO, addDays } from "date-fns"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Pill, Calendar, Clock, Snowflake, CheckCircle, XCircle, Minus } from "lucide-react"
+import { Pill, Calendar, Clock, Snowflake, CheckCircle, XCircle, Minus, Edit2, Trash2 } from "lucide-react"
 import { useIVFStore } from "@/lib/store"
 import type { IVFCycle } from "@/lib/types"
 
@@ -22,7 +22,12 @@ interface CleanCycleMedicationOverviewProps {
 }
 
 export function CleanCycleMedicationOverview({ cycle }: CleanCycleMedicationOverviewProps) {
-  const { getCleanMedicationScheduleOverview } = useIVFStore()
+  const { getCleanMedicationScheduleOverview, deleteCleanDaySpecificMedication } = useIVFStore()
+  const [editingMedication, setEditingMedication] = useState<{
+    daySpecificId: string
+    cycleDay: number
+    medication: any
+  } | null>(null)
   
   const scheduleOverview = useMemo(() => {
     return getCleanMedicationScheduleOverview(cycle.id)
@@ -68,6 +73,12 @@ export function CleanCycleMedicationOverview({ cycle }: CleanCycleMedicationOver
   ]
   const uniqueMedicationNames = [...new Set(allMedicationNames)]
 
+  const handleDeleteDaySpecific = (cycleDay: number, medicationId: string) => {
+    if (confirm('Are you sure you want to delete this day-specific medication?')) {
+      deleteCleanDaySpecificMedication(cycle.id, cycleDay, medicationId)
+    }
+  }
+
   return (
     <Card>
       <CardHeader className="pb-4">
@@ -78,7 +89,7 @@ export function CleanCycleMedicationOverview({ cycle }: CleanCycleMedicationOver
           </CardTitle>
           <Button asChild>
             <Link href={`/cycles/${cycle.id}/medication-schedule`}>
-              Medication Schedule
+              Edit Medications
             </Link>
           </Button>
         </div>
@@ -141,6 +152,19 @@ export function CleanCycleMedicationOverview({ cycle }: CleanCycleMedicationOver
                           </div>
                         </div>
                         
+                        {/* Edit/Delete buttons for day-specific medications */}
+                        {med.type === 'day-specific' && (
+                          <div className="flex items-center gap-1">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-6 w-6 p-0"
+                              onClick={() => handleDeleteDaySpecific(dayGroup.day, med.daySpecificId || med.id)}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     ))}
                   </div>

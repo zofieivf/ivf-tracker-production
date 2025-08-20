@@ -155,7 +155,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
   const getSourceBadge = (source: string) => {
     switch (source) {
       case "scheduled":
-        return <Badge variant="secondary" className="text-xs">Medication Schedule</Badge>
+        return <Badge variant="secondary" className="text-xs">Recurring</Badge>
       case "day-specific":
         return <Badge variant="outline" className="text-xs">Day-Specific</Badge>
       default:
@@ -175,7 +175,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
         <Button asChild variant="outline">
           <Link href={`/cycles/${cycle.id}/medication-schedule`}>
             <Pill className="h-4 w-4 mr-2" />
-            Medication Schedule
+            Edit Medications
           </Link>
         </Button>
       </div>

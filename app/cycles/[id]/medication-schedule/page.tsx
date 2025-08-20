@@ -6,7 +6,7 @@ import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { format, addDays, parseISO } from "date-fns"
-import { ArrowLeft, Plus, Trash2, Clock, Pill } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Clock, Pill, Calendar } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Textarea } from "@/components/ui/textarea"
 import { useIVFStore } from "@/lib/store"
-import { CleanCycleMedicationOverview } from "@/components/clean-cycle-medication-overview"
+import { CompactMedicationTimeline } from "@/components/compact-medication-timeline"
 import { CleanUnifiedDailyMedicationChecklist } from "@/components/clean-unified-daily-medication-checklist"
 import type { MedicationSchedule, ScheduledMedication } from "@/lib/types"
 
@@ -53,6 +53,26 @@ const scheduleSchema = z.object({
   medications: z.array(medicationSchema).min(1, "At least one medication is required"),
 })
 
+const daySpecificSchema = z.object({
+  cycleDay: z.number().min(1, "Day must be at least 1"),
+  name: z.string().min(1, "Medication name is required"),
+  customName: z.string().optional(),
+  dosage: z.string().min(1, "Dosage is required"),
+  hour: z.string().min(1, "Hour is required"),
+  minute: z.string().min(1, "Minute is required"),
+  ampm: z.enum(["AM", "PM"]),
+  refrigerated: z.boolean().default(false),
+  notes: z.string().optional(),
+}).refine((data) => {
+  if (data.name === "custom" && !data.customName?.trim()) {
+    return false
+  }
+  return true
+}, {
+  message: "Custom medication name is required",
+  path: ["customName"]
+})
+
 interface MedicationSchedulePageProps {
   params: Promise<{ id: string }>
 }
@@ -83,10 +103,10 @@ const medicationTemplates = {
 export default function MedicationSchedulePage({ params }: MedicationSchedulePageProps) {
   const { id } = use(params)
   const router = useRouter()
-  const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule } = useIVFStore()
+  const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule, addCleanDaySpecificMedication } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [showDaySelector, setShowDaySelector] = useState(false)
-  const [selectedDay, setSelectedDay] = useState<number | null>(null)
+  const [showDaySpecificForm, setShowDaySpecificForm] = useState(false)
+  const [daySpecificDay, setDaySpecificDay] = useState<number>(1)
   
   const cycle = getCycleById(id)
   const existingSchedule = getMedicationScheduleByCycleId(id)
@@ -138,6 +158,22 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     name: "medications",
   })
 
+  // Day-specific medication form
+  const daySpecificForm = useForm<z.infer<typeof daySpecificSchema>>({
+    resolver: zodResolver(daySpecificSchema),
+    defaultValues: {
+      cycleDay: daySpecificDay,
+      name: "",
+      customName: "",
+      dosage: "",
+      hour: "8",
+      minute: "00",
+      ampm: "PM",
+      refrigerated: false,
+      notes: ""
+    }
+  })
+
   if (!cycle) {
     return <div>Cycle not found</div>
   }
@@ -178,6 +214,34 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     })
     
     form.setValue("medications", medications)
+  }
+
+  function onDaySpecificSubmit(values: z.infer<typeof daySpecificSchema>) {
+    if (!cycle) return
+
+    // Calculate date for the cycle day
+    const cycleStartDate = parseISO(cycle.startDate)
+    const dayDate = addDays(cycleStartDate, values.cycleDay - 1)
+
+    // Create day-specific medication
+    const medication = {
+      name: values.name === "custom" ? values.customName || "" : values.name,
+      dosage: values.dosage,
+      hour: values.hour,
+      minute: values.minute,
+      ampm: values.ampm,
+      refrigerated: values.refrigerated,
+      taken: false,
+      skipped: false,
+      takenAt: undefined,
+      notes: values.notes || ""
+    }
+
+    addCleanDaySpecificMedication(cycle.id, values.cycleDay, dayDate.toISOString(), medication)
+    
+    // Reset form and close
+    daySpecificForm.reset()
+    setShowDaySpecificForm(false)
   }
 
   function onSubmit(values: z.infer<typeof scheduleSchema>) {
@@ -228,9 +292,9 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
   return (
     <div className="container max-w-4xl py-10">
       <div className="mb-6">
-        <Button variant="ghost" onClick={() => router.push(`/cycles/${id}`)} className="mb-4">
+        <Button variant="ghost" onClick={() => router.push(`/cycles/${id}?tab=medications`)} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back to Cycle
+          Back to Medications
         </Button>
         <h1 className="text-3xl font-bold tracking-tight">Medication Schedule</h1>
         <p className="text-muted-foreground mt-1">
@@ -254,84 +318,57 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
         </div>
       </div>
 
-      <div className="space-y-6">
-        {/* Medication Overview - Using Clean System */}
-        <CleanCycleMedicationOverview 
-          cycleId={id} 
-          onDaySelect={(day) => {
-            setSelectedDay(day)
-            setShowDaySelector(true)
-          }}
-        />
+      {/* Two-column layout for better visibility */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        {/* Left column - Current Schedule Timeline */}
+        <div className="xl:sticky xl:top-4 xl:h-fit">
+          <CompactMedicationTimeline cycle={cycle} />
+        </div>
 
-        {/* Day-specific medication checklist when day is selected */}
-        {showDaySelector && selectedDay && (
-          <Card>
+        {/* Right column - Editing Forms */}
+        <div className="space-y-6">
+          {/* Quick Templates */}
+        <Card>
             <CardHeader>
-              <CardTitle>Day {selectedDay} Medications</CardTitle>
+              <CardTitle className="flex items-center gap-2">
+                <Pill className="h-5 w-5" />
+                Quick Templates
+              </CardTitle>
               <CardDescription>
-                Daily medication tracking for cycle day {selectedDay}
+                Load a common medication protocol to get started quickly
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <CleanUnifiedDailyMedicationChecklist 
-                cycleId={id}
-                selectedDay={selectedDay}
-              />
-              <div className="mt-4">
+              <div className="flex flex-wrap gap-2">
                 <Button 
+                  type="button" 
                   variant="outline" 
-                  onClick={() => setShowDaySelector(false)}
+                  onClick={() => loadTemplate("antagonist")}
                 >
-                  Close Day View
+                  Standard Antagonist Protocol
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => loadTemplate("lupron")}
+                >
+                  Long Lupron Protocol
+                </Button>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  onClick={() => loadTemplate("transfer")}
+                >
+                  Transfer Protocol
                 </Button>
               </div>
             </CardContent>
           </Card>
-        )}
 
-        {/* Quick Templates */}
+        {/* Recurring Medication Form */}
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Pill className="h-5 w-5" />
-              Quick Templates
-            </CardTitle>
-            <CardDescription>
-              Load a common medication protocol to get started quickly
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => loadTemplate("antagonist")}
-              >
-                Standard Antagonist Protocol
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => loadTemplate("lupron")}
-              >
-                Long Lupron Protocol
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => loadTemplate("transfer")}
-              >
-                Transfer Protocol
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Medication Form */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Medication Schedule</CardTitle>
+            <CardTitle>Recurring Medication</CardTitle>
             <CardDescription>
               Add recurring medications with their dosages, timing, and duration. These will appear on each day within the specified date range for easy daily tracking.
             </CardDescription>
@@ -355,7 +392,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                       )}
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <div className="space-y-4">
                       {/* Medication Name */}
                       <FormField
                         control={form.control}
@@ -632,6 +669,214 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
             </form>
           </Form>
         </Card>
+
+        {/* Day-Specific Medications - Compact Form */}
+        <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="flex items-center gap-2">
+                    <Calendar className="h-5 w-5" />
+                    Day-Specific Medications
+                  </CardTitle>
+                  <CardDescription>
+                    Add one-time doses for specific days
+                  </CardDescription>
+                </div>
+                <Button variant="outline" onClick={() => setShowDaySpecificForm(!showDaySpecificForm)}>
+                  <Plus className="h-4 w-4 mr-1" />
+                  {showDaySpecificForm ? 'Cancel' : 'Add One-Time Dose'}
+                </Button>
+              </div>
+            </CardHeader>
+            {showDaySpecificForm && (
+              <CardContent className="border-t">
+                <Form {...daySpecificForm}>
+                  <form onSubmit={daySpecificForm.handleSubmit(onDaySpecificSubmit)} className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Cycle Day */}
+                      <FormField
+                        control={daySpecificForm.control}
+                        name="cycleDay"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Day</FormLabel>
+                            <FormControl>
+                              <Input 
+                                type="number" 
+                                min="1"
+                                placeholder="5"
+                                {...field}
+                                onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Medication Name */}
+                      <FormField
+                        control={daySpecificForm.control}
+                        name="name"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Medication</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {commonMedications.map((med) => (
+                                  <SelectItem key={med} value={med}>
+                                    {med}
+                                  </SelectItem>
+                                ))}
+                                <SelectItem value="custom">Custom...</SelectItem>
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Dosage */}
+                      <FormField
+                        control={daySpecificForm.control}
+                        name="dosage"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Dosage</FormLabel>
+                            <FormControl>
+                              <Input placeholder="250 IU" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      {/* Time - Compact */}
+                      <FormItem>
+                        <FormLabel>Time</FormLabel>
+                        <div className="flex gap-1">
+                          <FormField
+                            control={daySpecificForm.control}
+                            name="hour"
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-16">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {Array.from({ length: 12 }, (_, i) => i + 1).map((hour) => (
+                                    <SelectItem key={hour} value={hour.toString()}>
+                                      {hour}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          <FormField
+                            control={daySpecificForm.control}
+                            name="minute"
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-16">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="00">00</SelectItem>
+                                  <SelectItem value="30">30</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                          <FormField
+                            control={daySpecificForm.control}
+                            name="ampm"
+                            render={({ field }) => (
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger className="w-16">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  <SelectItem value="AM">AM</SelectItem>
+                                  <SelectItem value="PM">PM</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            )}
+                          />
+                        </div>
+                      </FormItem>
+                    </div>
+
+                    {/* Custom Name if needed */}
+                    {daySpecificForm.watch("name") === "custom" && (
+                      <FormField
+                        control={daySpecificForm.control}
+                        name="customName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Custom Name</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Enter medication name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {/* Additional options in one row */}
+                    <div className="flex items-center justify-between">
+                      <FormField
+                        control={daySpecificForm.control}
+                        name="refrigerated"
+                        render={({ field }) => (
+                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                            <FormControl>
+                              <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                              />
+                            </FormControl>
+                            <FormLabel>Refrigerated</FormLabel>
+                          </FormItem>
+                        )}
+                      />
+                      
+                      <div className="flex gap-2">
+                        <Button 
+                          type="button" 
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            daySpecificForm.reset()
+                            setShowDaySpecificForm(false)
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                        <Button type="submit" size="sm">
+                          Add Medication
+                        </Button>
+                      </div>
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            )}
+          </Card>
+        </div>
       </div>
     </div>
   )

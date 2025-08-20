@@ -5,6 +5,7 @@ export interface CycleDay {
   // medications removed - now handled via dailyMedicationStatuses
   clinicVisit?: ClinicVisit
   follicleSizes?: FollicleMeasurement
+  liningThickness?: number
   bloodwork?: BloodworkResult[]
   notes?: string
 }
@@ -71,11 +72,11 @@ export interface ClinicVisit {
 export interface FollicleMeasurement {
   left: number[]
   right: number[]
-  liningThickness?: number
 }
 
 export interface BloodworkResult {
   test: string
+  customTestName?: string
   value: string
   unit?: string
 }

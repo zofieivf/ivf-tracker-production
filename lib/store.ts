@@ -72,6 +72,8 @@ interface IVFStore {
   markCleanMedicationSkipped: (medicationId: string, cycleId: string, cycleDay: number) => void
   resetCleanMedicationStatus: (medicationId: string, cycleId: string, cycleDay: number) => void
   addCleanDaySpecificMedication: (cycleId: string, cycleDay: number, date: string, medication: Omit<import('./clean-medication-system').DaySpecificMedication, 'id'>) => void
+  updateCleanDaySpecificMedication: (cycleId: string, cycleDay: number, medicationId: string, medication: Partial<Omit<import('./clean-medication-system').DaySpecificMedication, 'id'>>) => void
+  deleteCleanDaySpecificMedication: (cycleId: string, cycleDay: number, medicationId: string) => void
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -907,6 +909,41 @@ export const useIVFStore = create<IVFStore>()(
           }))
         } catch (error) {
           console.error('Failed to add day-specific medication:', error)
+        }
+      },
+
+      updateCleanDaySpecificMedication: (cycleId, cycleDay, medicationId, medication) => {
+        const { dailyMedicationStatuses } = get()
+        
+        try {
+          const { updateDaySpecificMedication } = require('./clean-medication-system')
+          const updatedStatuses = updateDaySpecificMedication(
+            cycleId,
+            cycleDay,
+            medicationId,
+            medication,
+            dailyMedicationStatuses
+          )
+          set((state) => ({ dailyMedicationStatuses: updatedStatuses }))
+        } catch (error) {
+          console.error('Failed to update day-specific medication:', error)
+        }
+      },
+
+      deleteCleanDaySpecificMedication: (cycleId, cycleDay, medicationId) => {
+        const { dailyMedicationStatuses } = get()
+        
+        try {
+          const { deleteDaySpecificMedication } = require('./clean-medication-system')
+          const updatedStatuses = deleteDaySpecificMedication(
+            cycleId,
+            cycleDay,
+            medicationId,
+            dailyMedicationStatuses
+          )
+          set((state) => ({ dailyMedicationStatuses: updatedStatuses }))
+        } catch (error) {
+          console.error('Failed to delete day-specific medication:', error)
         }
       },
     }),

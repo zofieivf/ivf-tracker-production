@@ -71,7 +71,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
           day.bloodwork?.forEach((result) => {
             const value = Number.parseFloat(result.value)
             if (!isNaN(value)) {
-              const testName = result.test.toLowerCase()
+              const testName = (result.test === "Others" && result.customTestName ? result.customTestName : result.test).toLowerCase()
               if (testName.includes("estradiol") || testName.includes("e2")) {
                 dayData.estradiol = value
               } else if (testName.includes("lh")) {
@@ -82,6 +82,16 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 dayData.progesterone = value
               } else if (testName.includes("hcg") || testName.includes("beta")) {
                 dayData.hcg = value
+              } else if (testName.includes("tsh")) {
+                dayData.tsh = value
+              } else {
+                // Generic storage for other hormones
+                if (!dayData.otherHormones) dayData.otherHormones = []
+                dayData.otherHormones.push({
+                  name: result.test === "Others" && result.customTestName ? result.customTestName : result.test,
+                  value: value,
+                  unit: result.unit
+                })
               }
             }
           })
@@ -121,9 +131,13 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
         label: "Progesterone",
         color: "#ef4444",
       },
+      tsh: {
+        label: "TSH",
+        color: "#8b5cf6",
+      },
       hcg: {
         label: "Beta HCG",
-        color: "#8b5cf6",
+        color: "#ec4899",
       },
       liningThickness: {
         label: "Lining Thickness",
@@ -631,7 +645,7 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
         day.bloodwork?.forEach((result) => {
           const value = Number.parseFloat(result.value)
           if (!isNaN(value)) {
-            const testName = result.test.toLowerCase()
+            const testName = (result.test === "Others" && result.customTestName ? result.customTestName : result.test).toLowerCase()
             if (testName.includes("estradiol") || testName.includes("e2")) {
               dayData.estradiol = value
             } else if (testName.includes("lh")) {
@@ -642,6 +656,16 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
               dayData.progesterone = value
             } else if (testName.includes("hcg") || testName.includes("beta")) {
               dayData.hcg = value
+            } else if (testName.includes("tsh")) {
+              dayData.tsh = value
+            } else {
+              // Generic storage for other hormones
+              if (!dayData.otherHormones) dayData.otherHormones = []
+              dayData.otherHormones.push({
+                name: result.test === "Others" && result.customTestName ? result.customTestName : result.test,
+                value: value,
+                unit: result.unit
+              })
             }
           }
         })
@@ -1128,6 +1152,143 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                   />
                 </LineChart>
               </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {hormoneData.some((d) => d.tsh !== undefined) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>TSH Levels</CardTitle>
+                <CardDescription>Thyroid-stimulating hormone trends throughout the cycle ({dateRange})</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="w-full h-[300px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={hormoneData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                  <YAxis
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                    axisLine={false}
+                    label={{ value: "mIU/L", angle: -90, position: "insideLeft" }}
+                  />
+                  <ChartTooltip
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        const data = payload[0].payload
+                        return (
+                          <div className="bg-background border rounded-lg shadow-lg p-3">
+                            <p className="font-medium">Day {data.day} ({label})</p>
+                            <p className="text-sm text-muted-foreground">TSH: {data.tsh} mIU/L</p>
+                          </div>
+                        )
+                      }
+                      return null
+                    }}
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="tsh"
+                    stroke={chartConfig.tsh.color}
+                    strokeWidth={3}
+                    dot={{ r: 5 }}
+                    name="TSH"
+                    connectNulls={false}
+                  />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+      {/* Generic Other Hormones Chart */}
+      {hormoneData.some((d) => d.otherHormones && d.otherHormones.length > 0) && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Activity className="h-5 w-5 text-primary" />
+              <div>
+                <CardTitle>Other Hormones</CardTitle>
+                <CardDescription>Custom bloodwork tests throughout the cycle ({dateRange})</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              {(() => {
+                const uniqueHormones = new Set()
+                hormoneData.forEach(day => {
+                  if (day.otherHormones) {
+                    day.otherHormones.forEach(hormone => uniqueHormones.add(hormone.name))
+                  }
+                })
+                
+                return Array.from(uniqueHormones).map((hormoneType, index) => {
+                  const chartData = hormoneData.map(day => {
+                    const hormone = day.otherHormones?.find(h => h.name === hormoneType)
+                    return {
+                      ...day,
+                      value: hormone?.value,
+                      unit: hormone?.unit
+                    }
+                  }).filter(d => d.value !== undefined)
+                  
+                  if (chartData.length === 0) return null
+                  
+                  const colors = ["#06b6d4", "#84cc16", "#f97316", "#14b8a6", "#a855f7", "#f59e0b"]
+                  const color = colors[index % colors.length]
+                  
+                  return (
+                    <div key={hormoneType} className="w-full h-[250px]">
+                      <h4 className="text-sm font-medium mb-2">{hormoneType} {chartData[0]?.unit && `(${chartData[0].unit})`}</h4>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={chartData} margin={{ top: 10, right: 30, left: 10, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" />
+                          <XAxis dataKey="date" tick={{ fontSize: 12 }} tickLine={false} axisLine={false} />
+                          <YAxis
+                            tick={{ fontSize: 12 }}
+                            tickLine={false}
+                            axisLine={false}
+                            label={{ value: chartData[0]?.unit || "", angle: -90, position: "insideLeft" }}
+                          />
+                          <ChartTooltip
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                const data = payload[0].payload
+                                return (
+                                  <div className="bg-background border rounded-lg shadow-lg p-3">
+                                    <p className="font-medium">Day {data.day} ({label})</p>
+                                    <p className="text-sm text-muted-foreground">
+                                      {hormoneType}: {data.value} {data.unit || ""}
+                                    </p>
+                                  </div>
+                                )
+                              }
+                              return null
+                            }}
+                          />
+                          <Line
+                            type="monotone"
+                            dataKey="value"
+                            stroke={color}
+                            strokeWidth={3}
+                            dot={{ r: 4 }}
+                            name={hormoneType}
+                            connectNulls={false}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )
+                })
+              })()}
             </div>
           </CardContent>
         </Card>

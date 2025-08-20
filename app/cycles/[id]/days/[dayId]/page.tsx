@@ -51,7 +51,6 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
     
     try {
       const dayMeds = getDayMedications(cycle.id, day.cycleDay, day.date)
-      console.log(`Day ${day.cycleDay} medications:`, dayMeds.medications.length, dayMeds.medications)
       return dayMeds.medications.length > 0
     } catch (error) {
       console.error('Error checking medications for day:', error)
@@ -278,7 +277,7 @@ export default function DayDetailPage({ params }: { params: Promise<{ id: string
                   <li key={index} className="border-b pb-3 last:border-0 last:pb-0">
                     <div>
                       <div className="flex justify-between">
-                        <p className="font-medium">{result.test}</p>
+                        <p className="font-medium">{result.test === "Others" && result.customTestName ? result.customTestName : result.test}</p>
                         <p>
                           {result.value} {result.unit}
                         </p>

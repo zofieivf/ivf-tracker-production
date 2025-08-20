@@ -65,7 +65,6 @@ export function CycleCalendarView({
         medicationSchedule, 
         dailyMedicationStatuses || []
       )
-      console.log(`Calendar Day ${day.cycleDay} medication count:`, totalMedicationCount)
     } catch (error) {
       console.error('Error getting medication count:', error)
       totalMedicationCount = 0
