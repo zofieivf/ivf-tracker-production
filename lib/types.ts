@@ -96,6 +96,7 @@ export interface UserProfile {
   dateOfBirth: string
   ivfReasons: ("low-amh" | "dor" | "premature-ovarian-failure" | "endo" | "pcos" | "blocked-fallopian-tubes" | "secondary-infertility" | "same-sex" | "genetic-reasons" | "antiphospholipid-syndrome" | "male-factor" | "other")[]
   ivfReasonOther?: string
+  geneticReasonsDetails?: string
   livingChildren: number
   childrenFromIVF?: "yes" | "no"
   numberOfIVFChildren?: number

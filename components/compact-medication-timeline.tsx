@@ -25,7 +25,10 @@ interface MedicationEntry {
 }
 
 export function CompactMedicationTimeline({ cycle }: CompactMedicationTimelineProps) {
-  const { getUnifiedMedicationsForDay, deleteCleanDaySpecificMedication, dailyMedicationStatuses } = useIVFStore()
+  const { getUnifiedMedicationsForDay, deleteCleanDaySpecificMedication, dailyMedicationStatuses, getMedicationScheduleByCycleId } = useIVFStore()
+  
+  // Get the current medication schedule to use as a dependency
+  const medicationSchedule = getMedicationScheduleByCycleId(cycle.id)
   
   const medicationData = useMemo(() => {
     const allMedications: MedicationEntry[] = []
@@ -81,7 +84,7 @@ export function CompactMedicationTimeline({ cycle }: CompactMedicationTimelinePr
       
       return parseTime(a.time) - parseTime(b.time)
     })
-  }, [cycle, getUnifiedMedicationsForDay, dailyMedicationStatuses])
+  }, [cycle, getUnifiedMedicationsForDay, dailyMedicationStatuses, medicationSchedule])
 
   const handleDeleteDaySpecific = (cycleDay: number, medicationId: string) => {
     if (confirm('Are you sure you want to delete this day-specific medication?')) {

@@ -43,6 +43,7 @@ const aboutMeSchema = z.object({
     "other"
   ])).min(1, "Please select at least one reason for undergoing IVF"),
   ivfReasonOther: z.string().optional(),
+  geneticReasonsDetails: z.string().optional(),
   livingChildren: z.number({
     required_error: "Please specify the number of living children",
   }).min(0).max(10),
@@ -58,6 +59,14 @@ const aboutMeSchema = z.object({
 }, {
   message: "Please specify the reason when selecting 'Other'",
   path: ["ivfReasonOther"]
+}).refine((data) => {
+  if (data.ivfReasons.includes("genetic-reasons") && !data.geneticReasonsDetails?.trim()) {
+    return false
+  }
+  return true
+}, {
+  message: "Please provide details when selecting 'Genetic Reasons'",
+  path: ["geneticReasonsDetails"]
 }).refine((data) => {
   if (data.livingChildren > 0 && !data.childrenFromIVF) {
     return false
@@ -260,6 +269,7 @@ export function AboutMeCard() {
       dateOfBirth: userProfile?.dateOfBirth ? new Date(userProfile.dateOfBirth) : undefined,
       ivfReasons: userProfile?.ivfReasons || [],
       ivfReasonOther: userProfile?.ivfReasonOther || "",
+      geneticReasonsDetails: userProfile?.geneticReasonsDetails || "",
       livingChildren: userProfile?.livingChildren ?? 0,
       childrenFromIVF: userProfile?.childrenFromIVF || undefined,
       numberOfIVFChildren: userProfile?.numberOfIVFChildren || undefined,
@@ -267,6 +277,24 @@ export function AboutMeCard() {
       menstrualCycleDays: userProfile?.menstrualCycleDays || undefined,
     },
   })
+
+  // Reset form when entering edit mode
+  useEffect(() => {
+    if (isEditing && userProfile) {
+      form.reset({
+        location: userProfile.location || "",
+        dateOfBirth: userProfile.dateOfBirth ? new Date(userProfile.dateOfBirth) : undefined,
+        ivfReasons: userProfile.ivfReasons || [],
+        ivfReasonOther: userProfile.ivfReasonOther || "",
+        geneticReasonsDetails: userProfile.geneticReasonsDetails || "",
+        livingChildren: userProfile.livingChildren ?? 0,
+        childrenFromIVF: userProfile.childrenFromIVF || undefined,
+        numberOfIVFChildren: userProfile.numberOfIVFChildren || undefined,
+        regularPeriods: userProfile.regularPeriods || undefined,
+        menstrualCycleDays: userProfile.menstrualCycleDays || undefined,
+      })
+    }
+  }, [isEditing, userProfile, form])
 
   const watchedIvfReasons = form.watch("ivfReasons")
   const watchedDateOfBirth = form.watch("dateOfBirth")
@@ -296,6 +324,7 @@ export function AboutMeCard() {
       dateOfBirth: values.dateOfBirth.toISOString(),
       ivfReasons: values.ivfReasons,
       ivfReasonOther: values.ivfReasonOther,
+      geneticReasonsDetails: values.geneticReasonsDetails,
       livingChildren: values.livingChildren,
       childrenFromIVF: values.childrenFromIVF,
       numberOfIVFChildren: values.numberOfIVFChildren,
@@ -407,6 +436,13 @@ export function AboutMeCard() {
                 ))}
               </div>
             </div>
+            
+            {userProfile.ivfReasons.includes("genetic-reasons") && userProfile.geneticReasonsDetails && (
+              <div className="md:col-span-2">
+                <p className="font-medium">Genetic Reasons Details</p>
+                <p className="text-sm text-gray-700 mt-1">{userProfile.geneticReasonsDetails}</p>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -435,7 +471,7 @@ export function AboutMeCard() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Country (Optional)</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value} defaultValue={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select your country" />
@@ -539,6 +575,25 @@ export function AboutMeCard() {
                     <FormControl>
                       <Textarea
                         placeholder="Please describe your specific reason for undergoing IVF"
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {watchedIvfReasons?.includes("genetic-reasons") && (
+              <FormField
+                control={form.control}
+                name="geneticReasonsDetails"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Genetic Reasons Details</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Please provide details about the genetic reasons for undergoing IVF"
                         {...field}
                       />
                     </FormControl>

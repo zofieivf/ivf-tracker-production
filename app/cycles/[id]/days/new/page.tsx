@@ -74,6 +74,7 @@ export default function NewDayPageNoMeds({ params }: { params: Promise<{ id: str
   >([])
   const [leftFollicles, setLeftFollicles] = useState<string>("")
   const [rightFollicles, setRightFollicles] = useState<string>("")
+  const [currentTab, setCurrentTab] = useState<string>("clinic")
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -92,8 +93,7 @@ export default function NewDayPageNoMeds({ params }: { params: Promise<{ id: str
 
   // Common tests for bloodwork dropdown
   const commonBloodworkTests = [
-    "Estradiol (E2)", "LH", "FSH", "Progesterone", "hCG",
-    "Testosterone", "Prolactin", "Thyroid (TSH)", "AMH"
+    "Estradiol (E2)", "LH", "FSH", "Progesterone", "Beta HCG", "Others"
   ]
 
   // Use cycle goal to determine what monitoring options to show
@@ -196,7 +196,7 @@ export default function NewDayPageNoMeds({ params }: { params: Promise<{ id: str
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)}>
-            <Tabs defaultValue="clinic">
+            <Tabs value={currentTab} onValueChange={setCurrentTab}>
               <TabsList className="grid grid-cols-3 mx-6 mt-2">
                 <TabsTrigger value="clinic">Clinic Visit</TabsTrigger>
                 <TabsTrigger value="monitoring">Monitoring</TabsTrigger>
@@ -231,7 +231,13 @@ export default function NewDayPageNoMeds({ params }: { params: Promise<{ id: str
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Visit Type</FormLabel>
-                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                              <Select onValueChange={(value) => {
+                                field.onChange(value)
+                                // Auto-switch to monitoring tab when monitoring is selected
+                                if (value === "monitoring") {
+                                  setCurrentTab("monitoring")
+                                }
+                              }} defaultValue={field.value}>
                                 <FormControl>
                                   <SelectTrigger>
                                     <SelectValue placeholder="Select visit type" />

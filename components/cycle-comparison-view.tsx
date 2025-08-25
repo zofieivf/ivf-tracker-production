@@ -354,14 +354,47 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                     </tr>
                     <tr className="border-b">
                       <td className="py-3 px-4 font-medium">Cycle End</td>
-                      {cycleAnalyses.map((analysis) => (
-                        <td key={analysis.cycle.id} className="py-3 px-4">
-                          {analysis.cycle.endDate 
-                            ? format(parseISO(analysis.cycle.endDate), "MMM d, yyyy")
-                            : "Ongoing"
+                      {cycleAnalyses.map((analysis) => {
+                        // If endDate is explicitly set, use it
+                        if (analysis.cycle.endDate) {
+                          return (
+                            <td key={analysis.cycle.id} className="py-3 px-4">
+                              {format(parseISO(analysis.cycle.endDate), "MMM d, yyyy")}
+                            </td>
+                          )
+                        }
+                        
+                        // For retrieval cycles, find the retrieval day
+                        if (analysis.cycle.cycleGoal === "retrieval") {
+                          const retrievalDay = analysis.cycle.days.find(day => day.clinicVisit?.type === "retrieval")
+                          if (retrievalDay) {
+                            return (
+                              <td key={analysis.cycle.id} className="py-3 px-4">
+                                {format(parseISO(retrievalDay.date), "MMM d, yyyy")} (retrieval date)
+                              </td>
+                            )
                           }
-                        </td>
-                      ))}
+                        }
+                        
+                        // For transfer cycles, find the transfer day
+                        if (analysis.cycle.cycleGoal === "transfer") {
+                          const transferDay = analysis.cycle.days.find(day => day.clinicVisit?.type === "transfer")
+                          if (transferDay) {
+                            return (
+                              <td key={analysis.cycle.id} className="py-3 px-4">
+                                {format(parseISO(transferDay.date), "MMM d, yyyy")} (transfer date)
+                              </td>
+                            )
+                          }
+                        }
+                        
+                        // Fallback to "Ongoing"
+                        return (
+                          <td key={analysis.cycle.id} className="py-3 px-4">
+                            Ongoing
+                          </td>
+                        )
+                      })}
                     </tr>
                     {/* Only show stim-related metrics for retrieval cycles */}
                     {cycleAnalyses.length > 0 && cycleAnalyses[0].cycle.cycleGoal === "retrieval" && (
@@ -474,7 +507,7 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                         <td className="py-3 px-4 font-medium">Euploid Blastocysts</td>
                         {cycleAnalyses.map((analysis) => (
                           <td key={analysis.cycle.id} className="py-3 px-4 text-green-600 font-medium">
-                            {analysis.cycle.outcome?.euploidBlastocysts || "N/A"}
+                            {analysis.cycle.outcome?.euploidBlastocysts !== undefined ? analysis.cycle.outcome.euploidBlastocysts : "N/A"}
                           </td>
                         ))}
                       </tr>

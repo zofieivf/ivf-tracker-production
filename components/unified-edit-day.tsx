@@ -132,7 +132,7 @@ export function UnifiedEditDay({ cycleId, dayId, onSave, onCancel }: UnifiedEdit
   }
 
   const commonBloodworkTests = [
-    "Estradiol (E2)", "LH", "Progesterone", "Beta HCG", "Others"
+    "Estradiol (E2)", "LH", "FSH", "Progesterone", "Beta HCG", "Others"
   ]
 
   return (

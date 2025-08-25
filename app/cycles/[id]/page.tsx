@@ -314,6 +314,7 @@ export default function CyclePage({ params }: { params: Promise<{ id: string }> 
 
             {cycle.days && cycle.days.length > 0 ? (
               <CycleCalendarView 
+                key={`${cycle.id}-${cycle.startDate}`}
                 cycle={cycle}
                 isDeleteMode={isDeleteMode}
                 selectedDays={selectedDays}

@@ -4,7 +4,6 @@ import Link from "next/link"
 import { format, parseISO } from "date-fns"
 import { Calendar, User, Target } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { IVFCycle } from "@/lib/types"
 
@@ -33,13 +32,13 @@ export function CycleList({ cycles }: CycleListProps) {
   const getStatusColor = (status: string) => {
     switch (status) {
       case "active":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800 hover:bg-green-200 hover:text-green-900"
       case "completed":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800 hover:bg-yellow-200 hover:text-yellow-900 cursor-pointer"
       case "cancelled":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800 hover:bg-red-200 hover:text-red-900"
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800 hover:bg-gray-200 hover:text-gray-900"
     }
   }
 
@@ -117,7 +116,23 @@ export function CycleList({ cycles }: CycleListProps) {
                   </div>
                 </CardDescription>
               </div>
-              <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+              <span 
+                className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer ${getStatusColor(cycle.status)}`}
+                onMouseEnter={(e) => {
+                  if (cycle.status === 'completed') {
+                    e.currentTarget.style.backgroundColor = '#fef3c7' // yellow-200
+                    e.currentTarget.style.color = '#78350f' // yellow-900
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (cycle.status === 'completed') {
+                    e.currentTarget.style.backgroundColor = '#dbeafe' // blue-100
+                    e.currentTarget.style.color = '#1e40af' // blue-800
+                  }
+                }}
+              >
+                {cycle.status}
+              </span>
             </div>
           </CardHeader>
           <CardContent>

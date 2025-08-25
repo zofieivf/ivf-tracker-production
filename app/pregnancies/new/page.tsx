@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import React, { useState, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
@@ -62,30 +62,30 @@ export default function NewNaturalPregnancyPage() {
   const { addNaturalPregnancy, cycles, userProfile } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  // Calculate age from existing data if available
-  const suggestedAge = useMemo(() => {
-    if (!userProfile?.dateOfBirth) return undefined
-    
-    // Find the most recent cycle to get a reference age
-    const mostRecentCycle = cycles
-      .filter(cycle => cycle.ageAtStart)
-      .sort((a, b) => new Date(b.startDate).getTime() - new Date(a.startDate).getTime())[0]
-    
-    if (mostRecentCycle) {
-      return mostRecentCycle.ageAtStart
-    }
-    
-    // Fallback: calculate current age from birth date
-    return differenceInYears(new Date(), parseISO(userProfile.dateOfBirth))
-  }, [cycles, userProfile])
-
   const form = useForm<z.infer<typeof pregnancySchema>>({
     resolver: zodResolver(pregnancySchema),
     defaultValues: {
-      ageAtConception: suggestedAge?.toString() || "",
+      ageAtConception: "",
       notes: "",
     },
   })
+
+  // Watch the conception date for age calculation
+  const conceptionDate = form.watch("dateOfConception")
+
+  // Calculate age at conception automatically
+  const calculatedAge = useMemo(() => {
+    if (!userProfile?.dateOfBirth || !conceptionDate) return undefined
+    
+    return differenceInYears(conceptionDate, parseISO(userProfile.dateOfBirth))
+  }, [conceptionDate, userProfile])
+
+  // Update age automatically when conception date or user profile changes
+  React.useEffect(() => {
+    if (calculatedAge !== undefined) {
+      form.setValue("ageAtConception", calculatedAge.toString())
+    }
+  }, [calculatedAge, form])
 
   function onSubmit(values: z.infer<typeof pregnancySchema>) {
     setIsSubmitting(true)
@@ -184,7 +184,12 @@ export default function NewNaturalPregnancyPage() {
                       />
                     </FormControl>
                     <FormDescription>
-                      {suggestedAge && `We found age ${suggestedAge} from your previous cycles - feel free to adjust if needed`}
+                      {calculatedAge !== undefined && userProfile?.dateOfBirth
+                        ? "Age automatically calculated from your birth date and conception date"
+                        : userProfile?.dateOfBirth
+                        ? "Select a conception date to automatically calculate age"
+                        : "Please add your birth date in settings to auto-calculate age"
+                      }
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

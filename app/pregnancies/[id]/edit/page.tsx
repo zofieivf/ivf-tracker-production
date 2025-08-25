@@ -1,11 +1,11 @@
 "use client"
 
-import { useState, useMemo, useEffect, use } from "react"
+import React, { useState, useMemo, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { format, parseISO } from "date-fns"
+import { format, parseISO, differenceInYears } from "date-fns"
 import { CalendarIcon, ArrowLeft, Trash2 } from "lucide-react"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
@@ -61,7 +61,7 @@ interface EditPregnancyPageProps {
 
 export default function EditPregnancyPage({ params }: EditPregnancyPageProps) {
   const router = useRouter()
-  const { getNaturalPregnancyById, updateNaturalPregnancy, deleteNaturalPregnancy, naturalPregnancies } = useIVFStore()
+  const { getNaturalPregnancyById, updateNaturalPregnancy, deleteNaturalPregnancy, naturalPregnancies, userProfile } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const resolvedParams = use(params)
   const [pregnancy, setPregnancy] = useState(getNaturalPregnancyById(resolvedParams.id))
@@ -85,6 +85,23 @@ export default function EditPregnancyPage({ params }: EditPregnancyPageProps) {
       notes: pregnancy?.notes || "",
     },
   })
+
+  // Watch the conception date for age calculation
+  const conceptionDate = form.watch("dateOfConception")
+
+  // Calculate age at conception automatically
+  const calculatedAge = useMemo(() => {
+    if (!userProfile?.dateOfBirth || !conceptionDate) return undefined
+    
+    return differenceInYears(conceptionDate, parseISO(userProfile.dateOfBirth))
+  }, [conceptionDate, userProfile])
+
+  // Update age automatically when conception date changes
+  useEffect(() => {
+    if (calculatedAge !== undefined && mounted) {
+      form.setValue("ageAtConception", calculatedAge.toString())
+    }
+  }, [calculatedAge, form, mounted])
 
   // Update form when pregnancy changes
   useEffect(() => {
@@ -222,7 +239,12 @@ export default function EditPregnancyPage({ params }: EditPregnancyPageProps) {
                       />
                     </FormControl>
                     <FormDescription>
-                      Your age when conception occurred
+                      {calculatedAge !== undefined && userProfile?.dateOfBirth
+                        ? "Age automatically calculated from your birth date and conception date"
+                        : userProfile?.dateOfBirth
+                        ? "Select a conception date to automatically calculate age"
+                        : "Please add your birth date in settings to auto-calculate age"
+                      }
                     </FormDescription>
                     <FormMessage />
                   </FormItem>

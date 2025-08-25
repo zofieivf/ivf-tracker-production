@@ -263,7 +263,7 @@ export function CycleCalendarView({
                           type === 'placeholder' ? 'border-dashed bg-muted/20' : ''
                         } ${dayInfo.clinicVisitInfo.styling}`}
                       >
-                        <CardContent className="p-2">
+                        <CardContent className="p-2 h-full flex flex-col">
                           {/* Day Header */}
                           <div className="flex items-center justify-between mb-2">
                             <Badge variant="outline" className="rounded-full px-2 py-0 h-5 text-xs">
@@ -282,7 +282,7 @@ export function CycleCalendarView({
                           </div>
 
                           {/* Data Indicators */}
-                          <div className="space-y-1">
+                          <div className="space-y-1 flex-1">
                             {dayInfo.hasMedications && (
                               <div className="flex items-center gap-1 text-xs">
                                 <Pill className="h-3 w-3 text-primary" />
@@ -320,7 +320,7 @@ export function CycleCalendarView({
                           </div>
 
                           {/* Action Button */}
-                          <div className="mt-2">
+                          <div className="mt-auto pt-2">
                             {type === 'placeholder' ? (
                               <Button variant="ghost" size="sm" className="w-full h-6 text-xs" asChild>
                                 <Link href={`/cycles/${cycle.id}/days/new?day=${day.cycleDay}&date=${day.date}`}>

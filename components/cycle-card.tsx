@@ -254,7 +254,23 @@ export function CycleCard({ cycle, allCycles = [] }: CycleCardProps) {
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            <Badge className={getStatusColor(cycle.status)}>{cycle.status}</Badge>
+            <span 
+              className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold transition-colors cursor-pointer ${getStatusColor(cycle.status)}`}
+              onMouseEnter={(e) => {
+                if (cycle.status === 'completed') {
+                  e.currentTarget.style.backgroundColor = '#bfdbfe' // blue-200
+                  e.currentTarget.style.color = '#1e3a8a' // blue-900
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (cycle.status === 'completed') {
+                  e.currentTarget.style.backgroundColor = '#dbeafe' // blue-100
+                  e.currentTarget.style.color = '#1e40af' // blue-800
+                }
+              }}
+            >
+              {cycle.status}
+            </span>
             <Badge variant="outline" className="text-xs">
               {getCycleGoalDisplay(cycle.cycleGoal)}
             </Badge>

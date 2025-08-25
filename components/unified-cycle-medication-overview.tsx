@@ -26,7 +26,7 @@ interface MedicationEntry {
 }
 
 export function UnifiedCycleMedicationOverview({ cycle }: UnifiedCycleMedicationOverviewProps) {
-  const { getUnifiedMedicationsForDay } = useIVFStore()
+  const { getUnifiedMedicationsForDay, getMedicationScheduleByCycleId, dailyMedicationStatuses } = useIVFStore()
   
   const { medicationData, groupedByDay } = useMemo(() => {
     const allMedications: MedicationEntry[] = []
@@ -106,7 +106,7 @@ export function UnifiedCycleMedicationOverview({ cycle }: UnifiedCycleMedication
       medicationData: sortedMedications,
       groupedByDay: Object.values(grouped).sort((a, b) => a.day - b.day)
     }
-  }, [cycle, getUnifiedMedicationsForDay])
+  }, [cycle, getUnifiedMedicationsForDay, getMedicationScheduleByCycleId(cycle.id), dailyMedicationStatuses])
 
   // Group medications by name for the summary
   const medicationSummary = useMemo(() => {

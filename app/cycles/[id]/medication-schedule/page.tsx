@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, use } from "react"
+import { useState, use, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { z } from "zod"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm, useFieldArray } from "react-hook-form"
 import { format, addDays, parseISO } from "date-fns"
-import { ArrowLeft, Plus, Trash2, Clock, Pill, Calendar } from "lucide-react"
+import { ArrowLeft, Plus, Trash2, Clock, Pill, Calendar, Check } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 import { Input } from "@/components/ui/input"
@@ -103,10 +103,23 @@ const medicationTemplates = {
 export default function MedicationSchedulePage({ params }: MedicationSchedulePageProps) {
   const { id } = use(params)
   const router = useRouter()
-  const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule, addCleanDaySpecificMedication } = useIVFStore()
+  const { getCycleById, addMedicationSchedule, getMedicationScheduleByCycleId, updateMedicationSchedule, addCleanDaySpecificMedication, ensureAllDaysExist } = useIVFStore()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [showDaySpecificForm, setShowDaySpecificForm] = useState(false)
   const [daySpecificDay, setDaySpecificDay] = useState<number>(1)
+  const [showSuccessPopup, setShowSuccessPopup] = useState(false)
+  const [successMessage, setSuccessMessage] = useState("")
+  
+  // Auto-hide success popup after 3 seconds
+  useEffect(() => {
+    if (showSuccessPopup) {
+      const timer = setTimeout(() => {
+        setShowSuccessPopup(false)
+        setSuccessMessage("")
+      }, 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [showSuccessPopup])
   
   const cycle = getCycleById(id)
   const existingSchedule = getMedicationScheduleByCycleId(id)
@@ -242,6 +255,8 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     // Reset form and close
     daySpecificForm.reset()
     setShowDaySpecificForm(false)
+    setSuccessMessage("Day-specific medication added")
+    setShowSuccessPopup(true)
   }
 
   function onSubmit(values: z.infer<typeof scheduleSchema>) {
@@ -285,12 +300,16 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       addMedicationSchedule(scheduleData)
     }
 
+    // Ensure daily medication statuses exist for all days after updating schedule
+    ensureAllDaysExist(id)
+
     setIsSubmitting(false)
-    router.push(`/cycles/${id}`)
+    setSuccessMessage("Schedule Updated")
+    setShowSuccessPopup(true)
   }
 
   return (
-    <div className="container max-w-4xl py-10">
+    <div className="container max-w-4xl py-10 relative">
       <div className="mb-6">
         <Button variant="ghost" onClick={() => router.push(`/cycles/${id}?tab=medications`)} className="mb-4">
           <ArrowLeft className="h-4 w-4 mr-2" />
@@ -306,12 +325,8 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
           <div className="flex items-start gap-3">
             <Pill className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
             <div>
-              <h3 className="font-semibold text-blue-900 mb-2">When to Use Medication Schedule</h3>
-              <p className="text-blue-800 text-sm mb-3">
-                Use this medication schedule for <strong>recurring medications</strong> that you take on the same schedule for multiple days. This makes it easy to set up your regular protocol once and track daily compliance.
-              </p>
               <p className="text-blue-800 text-sm">
-                <strong>For one-time doses</strong> or if you prefer <strong>day-by-day tracking</strong>, use the "Edit Day" function on individual cycle days instead.
+                Use the Recurring Medication form to set up recurring medications that you take on the same schedule for multiple days. Use the Day-Specific Medications form below to set up one-time medications.
               </p>
             </div>
           </div>
@@ -793,7 +808,9 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                                 </FormControl>
                                 <SelectContent>
                                   <SelectItem value="00">00</SelectItem>
+                                  <SelectItem value="15">15</SelectItem>
                                   <SelectItem value="30">30</SelectItem>
+                                  <SelectItem value="45">45</SelectItem>
                                 </SelectContent>
                               </Select>
                             )}
@@ -878,6 +895,14 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
           </Card>
         </div>
       </div>
+
+      {/* Success Popup */}
+      {showSuccessPopup && (
+        <div className="fixed top-4 right-4 z-50 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-2 animate-in slide-in-from-right-5">
+          <Check className="h-5 w-5" />
+          <span className="font-medium">{successMessage}</span>
+        </div>
+      )}
     </div>
   )
 }

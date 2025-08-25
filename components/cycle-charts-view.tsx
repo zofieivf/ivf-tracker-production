@@ -52,7 +52,27 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     return null
   }
   
+  // Helper to get transfer date for context
+  const getTransferDate = () => {
+    const transferDay = cycle.days.find(day => day.clinicVisit?.type === "transfer")
+    if (transferDay) {
+      return format(parseISO(transferDay.date), "MMM d, yyyy")
+    }
+    return null
+  }
+  
+  // Helper to get IUI date for context
+  const getIUIDate = () => {
+    const iuiDay = cycle.days.find(day => day.clinicVisit?.type === "iui")
+    if (iuiDay) {
+      return format(parseISO(iuiDay.date), "MMM d, yyyy")
+    }
+    return null
+  }
+  
   const retrievalDate = getEggRetrievalDate()
+  const transferDate = getTransferDate()
+  const iuiDate = getIUIDate()
   
   // For transfer cycles, show different content
   if (isTransferCycle) {
@@ -148,14 +168,27 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
     return (
       <div className="space-y-6">
         {/* Cycle Context Header */}
-        {retrievalDate && (
-          <Card className="bg-blue-50/50 border-blue-200">
+        {cycle.cycleGoal === "transfer" && transferDate && (
+          <Card className="bg-green-50/50 border-green-200">
             <CardContent className="p-4">
               <div className="flex items-center gap-2">
-                <Target className="h-5 w-5 text-blue-600" />
+                <Target className="h-5 w-5 text-green-600" />
                 <div>
-                  <p className="text-sm font-medium text-blue-900">Egg Retrieval Date</p>
-                  <p className="text-lg font-semibold text-blue-800">{retrievalDate}</p>
+                  <p className="text-sm font-medium text-green-900">Transfer Date</p>
+                  <p className="text-lg font-semibold text-green-800">{transferDate}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+        {cycle.cycleGoal === "iui" && iuiDate && (
+          <Card className="bg-purple-50/50 border-purple-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2">
+                <Target className="h-5 w-5 text-purple-600" />
+                <div>
+                  <p className="text-sm font-medium text-purple-900">IUI Date</p>
+                  <p className="text-lg font-semibold text-purple-800">{iuiDate}</p>
                 </div>
               </div>
             </CardContent>
@@ -498,9 +531,9 @@ export function CycleChartsView({ cycle }: CycleChartsViewProps) {
                 Beta HCG Results
               </CardTitle>
               <CardDescription>
-                Beta HCG levels following embryo transfer
-                {(betaFromDailyTracking.betaHcg1 !== undefined || betaFromDailyTracking.betaHcg2 !== undefined) && 
-                  " (automatically pulled from Daily Tracking)"
+                {cycle.cycleGoal === "iui" 
+                  ? "Beta HCG levels following IUI (automatically pulled from Daily Tracking)"
+                  : `Beta HCG levels following embryo transfer${(betaFromDailyTracking.betaHcg1 !== undefined || betaFromDailyTracking.betaHcg2 !== undefined) ? " (automatically pulled from Daily Tracking)" : ""}`
                 }
               </CardDescription>
             </CardHeader>
