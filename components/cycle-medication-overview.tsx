@@ -6,7 +6,7 @@ import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Pill, Calendar, Clock, Snowflake, CheckCircle, XCircle, Minus } from "lucide-react"
+import { Pill, Calendar, Clock, Snowflake, CheckCircle, XCircle, Minus, Zap } from "lucide-react"
 import { useIVFStore } from "@/lib/store"
 import type { IVFCycle } from "@/lib/types"
 
@@ -21,6 +21,7 @@ interface MedicationEntry {
   dosage: string
   time: string
   refrigerated: boolean
+  trigger: boolean
   taken?: boolean
   skipped?: boolean
   source: "scheduled" | "day-specific"
@@ -50,6 +51,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
           dosage: item.status.actualDosage || item.medication.dosage,
           time: `${item.medication.hour}:${item.medication.minute} ${item.medication.ampm}`,
           refrigerated: item.medication.refrigerated,
+          trigger: (item.medication as any).trigger || false,
           taken: item.status.taken,
           skipped: item.status.skipped,
           source: "scheduled",
@@ -66,6 +68,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
           dosage: dayMed.dosage,
           time: `${dayMed.hour}:${dayMed.minute} ${dayMed.ampm}`,
           refrigerated: dayMed.refrigerated,
+          trigger: dayMed.trigger || false,
           taken: dayMed.taken,
           skipped: dayMed.skipped,
           source: "day-specific",
@@ -120,6 +123,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
       lastDay: number
       dosages: Set<string>
       sources: Set<string>
+      isTrigger: boolean
     }>()
 
     medicationData.forEach(med => {
@@ -131,7 +135,8 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
           firstDay: med.day,
           lastDay: med.day,
           dosages: new Set(),
-          sources: new Set()
+          sources: new Set(),
+          isTrigger: med.trigger
         })
       }
       
@@ -141,6 +146,7 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
       entry.lastDay = Math.max(entry.lastDay, med.day)
       entry.dosages.add(med.dosage)
       entry.sources.add(med.source)
+      entry.isTrigger = entry.isTrigger || med.trigger
     })
 
     return Array.from(summary.values()).sort((a, b) => a.firstDay - b.firstDay)
@@ -195,12 +201,26 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
           {medicationSummary.length > 0 ? (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {medicationSummary.map((med, index) => (
-                <div key={index} className="p-4 border rounded-lg">
+                <div key={index} className={`p-4 border rounded-lg ${med.isTrigger ? 'border-amber-300 bg-amber-50' : ''}`}>
                   <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-medium">{med.name}</h3>
-                    {Array.from(med.sources).map((source, index) => (
-                      <div key={index}>{getSourceBadge(source)}</div>
-                    ))}
+                    <div className="flex items-center gap-2">
+                      <h3 className={`font-medium ${med.isTrigger ? 'text-amber-700' : ''}`}>
+                        {med.name}
+                      </h3>
+                      {med.isTrigger && (
+                        <div className="flex items-center gap-1">
+                          <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                            Trigger
+                          </Badge>
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      {Array.from(med.sources).map((source, index) => (
+                        <div key={index}>{getSourceBadge(source)}</div>
+                      ))}
+                    </div>
                   </div>
                   <div className="text-sm text-muted-foreground space-y-1">
                     <div className="flex items-center gap-1">
@@ -295,7 +315,10 @@ export function CycleMedicationOverview({ cycle }: CycleMedicationOverviewProps)
                         </td>
                         <td className="py-2">
                           <div className="flex items-center gap-2">
-                            <span className="font-medium">{med.name}</span>
+                            <span className={`font-medium ${med.trigger ? 'text-amber-700' : ''}`}>
+                              {med.name}
+                            </span>
+                            {med.trigger && <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />}
                             {med.refrigerated && <Snowflake className="h-3 w-3 text-blue-500" />}
                             {getSourceBadge(med.source)}
                           </div>

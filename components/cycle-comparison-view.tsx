@@ -183,7 +183,7 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                           <div>
                             <div className="font-medium">{analysis.cycle.name}</div>
                             <Badge variant="outline" className="text-xs mt-1">
-                              {analysis.cycle.cycleGoal === "retrieval" ? "Retrieval" : "Transfer"}
+                              {analysis.cycle.cycleGoal === "retrieval" ? "Retrieval" : analysis.cycle.cycleGoal === "transfer" ? "Transfer" : "IUI"}
                             </Badge>
                           </div>
                         </th>
@@ -355,15 +355,6 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                     <tr className="border-b">
                       <td className="py-3 px-4 font-medium">Cycle End</td>
                       {cycleAnalyses.map((analysis) => {
-                        // If endDate is explicitly set, use it
-                        if (analysis.cycle.endDate) {
-                          return (
-                            <td key={analysis.cycle.id} className="py-3 px-4">
-                              {format(parseISO(analysis.cycle.endDate), "MMM d, yyyy")}
-                            </td>
-                          )
-                        }
-                        
                         // For retrieval cycles, find the retrieval day
                         if (analysis.cycle.cycleGoal === "retrieval") {
                           const retrievalDay = analysis.cycle.days.find(day => day.clinicVisit?.type === "retrieval")
@@ -376,7 +367,7 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                           }
                         }
                         
-                        // For transfer cycles, find the transfer day
+                        // For transfer cycles, find the transfer day (prioritized over user-set end date)
                         if (analysis.cycle.cycleGoal === "transfer") {
                           const transferDay = analysis.cycle.days.find(day => day.clinicVisit?.type === "transfer")
                           if (transferDay) {
@@ -388,7 +379,28 @@ export function CycleComparisonView({ cycles }: CycleComparisonViewProps) {
                           }
                         }
                         
-                        // Fallback to "Ongoing"
+                        // For IUI cycles, find the IUI day (prioritized over user-set end date)
+                        if (analysis.cycle.cycleGoal === "iui") {
+                          const iuiDay = analysis.cycle.days.find(day => day.clinicVisit?.type === "iui")
+                          if (iuiDay) {
+                            return (
+                              <td key={analysis.cycle.id} className="py-3 px-4">
+                                {format(parseISO(iuiDay.date), "MMM d, yyyy")} (IUI date)
+                              </td>
+                            )
+                          }
+                        }
+                        
+                        // If endDate is explicitly set and no procedure date found, use it as fallback
+                        if (analysis.cycle.endDate) {
+                          return (
+                            <td key={analysis.cycle.id} className="py-3 px-4">
+                              {format(parseISO(analysis.cycle.endDate), "MMM d, yyyy")} (user-set end date)
+                            </td>
+                          )
+                        }
+                        
+                        // Final fallback to "Ongoing"
                         return (
                           <td key={analysis.cycle.id} className="py-3 px-4">
                             Ongoing

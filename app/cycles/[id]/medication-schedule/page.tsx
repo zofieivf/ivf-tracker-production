@@ -27,6 +27,7 @@ const medicationSchema = z.object({
   minute: z.string().min(1, "Minute is required"),
   ampm: z.enum(["AM", "PM"]),
   refrigerated: z.boolean().default(false),
+  trigger: z.boolean().default(false),
   startDay: z.number().min(1, "Start day must be at least 1").optional(),
   endDay: z.number().min(1, "End day must be at least 1").optional(),
   notes: z.string().optional(),
@@ -62,6 +63,7 @@ const daySpecificSchema = z.object({
   minute: z.string().min(1, "Minute is required"),
   ampm: z.enum(["AM", "PM"]),
   refrigerated: z.boolean().default(false),
+  trigger: z.boolean().default(false),
   notes: z.string().optional(),
 }).refine((data) => {
   if (data.name === "custom" && !data.customName?.trim()) {
@@ -142,6 +144,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       minute: med.minute,
       ampm: med.ampm,
       refrigerated: med.refrigerated,
+      trigger: (med as any).trigger || false,
       startDay: med.startDay,
       endDay: med.endDay,
       notes: med.notes || ""
@@ -154,6 +157,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
     minute: "00",
     ampm: "PM",
     refrigerated: false,
+    trigger: false,
     startDay: undefined,
     endDay: undefined,
     notes: ""
@@ -183,6 +187,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       minute: "00",
       ampm: "PM",
       refrigerated: false,
+      trigger: false,
       notes: ""
     }
   })
@@ -200,6 +205,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       minute: "00",
       ampm: "PM",
       refrigerated: false,
+      trigger: false,
       startDay: undefined,
       endDay: undefined,
       notes: ""
@@ -220,6 +226,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
         minute: minute.replace(/[^\d]/g, ""),
         ampm: ampm as "AM" | "PM",
         refrigerated: med.refrigerated,
+        trigger: false,
         startDay: undefined,
         endDay: undefined,
         notes: ""
@@ -244,6 +251,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
       minute: values.minute,
       ampm: values.ampm,
       refrigerated: values.refrigerated,
+      trigger: values.trigger,
       taken: false,
       skipped: false,
       takenAt: undefined,
@@ -279,6 +287,7 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
         minute: med.minute,
         ampm: med.ampm,
         refrigerated: med.refrigerated,
+        trigger: med.trigger,
         startDay: med.startDay || 1,
         endDay: med.endDay || 1,
         notes: med.notes || "",
@@ -614,27 +623,50 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
                         }}
                       />
 
-                      {/* Refrigerated */}
-                      <FormField
-                        control={form.control}
-                        name={`medications.${index}.refrigerated`}
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <div className="space-y-1 leading-none">
-                              <FormLabel>Refrigerated</FormLabel>
-                              <FormDescription>
-                                Requires refrigeration
-                              </FormDescription>
-                            </div>
-                          </FormItem>
-                        )}
-                      />
+                      {/* Refrigerated and Trigger checkboxes */}
+                      <div className="flex gap-6">
+                        <FormField
+                          control={form.control}
+                          name={`medications.${index}.refrigerated`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Refrigerated</FormLabel>
+                                <FormDescription>
+                                  Requires refrigeration
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={form.control}
+                          name={`medications.${index}.trigger`}
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <div className="space-y-1 leading-none">
+                                <FormLabel>Trigger</FormLabel>
+                                <FormDescription>
+                                  Trigger medication
+                                </FormDescription>
+                              </div>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                     </div>
 
                     {/* Notes */}
@@ -855,21 +887,39 @@ export default function MedicationSchedulePage({ params }: MedicationSchedulePag
 
                     {/* Additional options in one row */}
                     <div className="flex items-center justify-between">
-                      <FormField
-                        control={daySpecificForm.control}
-                        name="refrigerated"
-                        render={({ field }) => (
-                          <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                            <FormControl>
-                              <Checkbox
-                                checked={field.value}
-                                onCheckedChange={field.onChange}
-                              />
-                            </FormControl>
-                            <FormLabel>Refrigerated</FormLabel>
-                          </FormItem>
-                        )}
-                      />
+                      <div className="flex gap-6">
+                        <FormField
+                          control={daySpecificForm.control}
+                          name="refrigerated"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Refrigerated</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                        
+                        <FormField
+                          control={daySpecificForm.control}
+                          name="trigger"
+                          render={({ field }) => (
+                            <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value}
+                                  onCheckedChange={field.onChange}
+                                />
+                              </FormControl>
+                              <FormLabel>Trigger</FormLabel>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
                       
                       <div className="flex gap-2">
                         <Button 

@@ -4,7 +4,7 @@ import { useMemo } from "react"
 import { format, parseISO } from "date-fns"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Calendar, Clock, Snowflake, Trash2 } from "lucide-react"
+import { Calendar, Clock, Snowflake, Trash2, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useIVFStore } from "@/lib/store"
 import type { IVFCycle } from "@/lib/types"
@@ -20,6 +20,7 @@ interface MedicationEntry {
   dosage: string
   time: string
   refrigerated: boolean
+  trigger: boolean
   source: "scheduled" | "day-specific"
   daySpecificId?: string
 }
@@ -49,6 +50,7 @@ export function CompactMedicationTimeline({ cycle }: CompactMedicationTimelinePr
           dosage: item.status.actualDosage || item.medication.dosage,
           time: `${item.medication.hour}:${item.medication.minute} ${item.medication.ampm}`,
           refrigerated: item.medication.refrigerated,
+          trigger: (item.medication as any).trigger || false,
           source: "scheduled"
         })
       })
@@ -62,6 +64,7 @@ export function CompactMedicationTimeline({ cycle }: CompactMedicationTimelinePr
           dosage: dayMed.dosage,
           time: `${dayMed.hour}:${dayMed.minute} ${dayMed.ampm}`,
           refrigerated: dayMed.refrigerated,
+          trigger: (dayMed as any).trigger || false,
           source: "day-specific",
           daySpecificId: dayMed.id
         })
@@ -145,7 +148,17 @@ export function CompactMedicationTimeline({ cycle }: CompactMedicationTimelinePr
                       </td>
                       <td className="py-2">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium">{med.name}</span>
+                          <span className={`font-medium ${med.trigger ? 'text-amber-700 font-semibold' : ''}`}>
+                            {med.name}
+                          </span>
+                          {med.trigger && (
+                            <div className="flex items-center">
+                              <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                              <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800 border-amber-300">
+                                Trigger
+                              </Badge>
+                            </div>
+                          )}
                           {med.refrigerated && <Snowflake className="h-3 w-3 text-blue-500" />}
                           {getSourceBadge(med.source)}
                         </div>

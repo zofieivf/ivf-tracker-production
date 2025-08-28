@@ -1,6 +1,6 @@
 import Link from "next/link"
 import { format, parseISO, differenceInDays, differenceInWeeks } from "date-fns"
-import { Calendar, User, Baby, Edit } from "lucide-react"
+import { Calendar, User, Edit } from "lucide-react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -74,23 +74,20 @@ export function NaturalPregnancyCard({ pregnancy }: NaturalPregnancyCardProps) {
     <Card className="hover:shadow-md transition-shadow w-full border-l-4 border-l-emerald-500">
       <CardHeader className="bg-emerald-50">
         <div className="flex items-start justify-between">
-          <div className="flex items-start gap-3">
-            <Baby className="h-6 w-6 text-emerald-600 mt-0.5 flex-shrink-0" />
-            <div>
-              <CardTitle className="text-xl">Natural Pregnancy</CardTitle>
-              <CardDescription className="flex items-center gap-4 mt-2">
+          <div>
+            <CardTitle className="text-xl">Natural Pregnancy</CardTitle>
+            <CardDescription className="flex items-center gap-4 mt-2">
+              <div className="flex items-center gap-1">
+                <Calendar className="h-4 w-4" />
+                Conceived {format(conceptionDate, "MMM d, yyyy")}
+              </div>
+              {pregnancy.ageAtConception && (
                 <div className="flex items-center gap-1">
-                  <Calendar className="h-4 w-4" />
-                  Conceived {format(conceptionDate, "MMM d, yyyy")}
+                  <User className="h-4 w-4" />
+                  Age {pregnancy.ageAtConception}
                 </div>
-                {pregnancy.ageAtConception && (
-                  <div className="flex items-center gap-1">
-                    <User className="h-4 w-4" />
-                    Age {pregnancy.ageAtConception}
-                  </div>
-                )}
-              </CardDescription>
-            </div>
+              )}
+            </CardDescription>
           </div>
           <div className="flex items-center gap-2">
             <Badge className={statusBadge.class}>{statusBadge.text}</Badge>

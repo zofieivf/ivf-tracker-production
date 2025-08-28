@@ -19,6 +19,7 @@ export interface ScheduledMedication {
   minute: string
   ampm: string
   refrigerated: boolean
+  trigger: boolean
   startDay: number // cycle day to start
   endDay: number // cycle day to end
   notes?: string
@@ -53,6 +54,7 @@ export interface DailyMedicationStatus {
     minute: string
     ampm: string
     refrigerated: boolean
+    trigger: boolean
     taken: boolean
     takenAt?: string
     skipped: boolean
@@ -94,15 +96,88 @@ export interface UserProfile {
   id: string
   location?: string
   dateOfBirth: string
-  ivfReasons: ("low-amh" | "dor" | "premature-ovarian-failure" | "endo" | "pcos" | "blocked-fallopian-tubes" | "secondary-infertility" | "same-sex" | "genetic-reasons" | "antiphospholipid-syndrome" | "male-factor" | "other")[]
+  ivfReasons: ("low-amh" | "dor" | "premature-ovarian-failure" | "endo" | "adenomyosis" | "pcos" | "blocked-fallopian-tubes" | "secondary-infertility" | "recurrent-pregnancy-loss" | "same-sex" | "genetic-reasons" | "antiphospholipid-syndrome" | "male-factor" | "other")[]
   ivfReasonOther?: string
   geneticReasonsDetails?: string
   livingChildren: number
   childrenFromIVF?: "yes" | "no"
   numberOfIVFChildren?: number
   regularPeriods?: "yes" | "no"
+  // Public profile fields
+  username?: string
+  displayName?: string
+  bio?: string
+  isPublic?: boolean
   menstrualCycleDays?: number
   createdAt: string
+}
+
+// Public profile interfaces for multi-user features
+export interface PublicUserProfile {
+  id: string
+  username: string
+  displayName?: string
+  location?: string
+  joinedDate: string
+  totalCycles: number
+  bio?: string
+  isPublic: boolean
+}
+
+export interface PublicCycle {
+  id: string
+  name: string
+  owner: {
+    id: string
+    username: string
+    displayName?: string
+  }
+  cycleGoal: "retrieval" | "transfer" | "iui"
+  cycleType: string
+  ageAtStart?: number
+  startDate: string
+  endDate?: string
+  status: "active" | "completed" | "cancelled"
+  hasOutcome: boolean
+  location?: string
+  daysCount: number
+}
+
+export interface CycleFilters {
+  cycleGoal?: "retrieval" | "transfer" | "iui"
+  cycleType?: string
+  ageRange?: [number, number]
+  location?: string
+  hasOutcome?: boolean
+  status?: "active" | "completed" | "cancelled"
+}
+
+// Best vs Best comparison types
+export interface BestCycleComparison {
+  metric: 'mature-eggs' | 'blastocysts' | 'euploids'
+  yourBestCycle: {
+    cycle: PublicCycle
+    value: number
+    rank: number // Which cycle this was for you (1st, 2nd, etc.)
+  }
+  theirBestCycle: {
+    cycle: PublicCycle  
+    value: number
+    rank: number
+  }
+  comparison: {
+    winner: 'you' | 'them' | 'tie'
+    difference: number
+    percentageDifference: number
+  }
+}
+
+export interface CycleMetricOption {
+  key: 'mature-eggs' | 'blastocysts' | 'euploids' | 'transfer-success'
+  label: string
+  description: string
+  availableFor: ('retrieval' | 'transfer' | 'iui')[]
+  requiresOutcome: boolean
 }
 
 export interface CycleCosts {

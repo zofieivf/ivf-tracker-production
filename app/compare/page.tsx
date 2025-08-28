@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from "react"
 import Link from "next/link"
-import { ArrowLeft, BarChart3, Pill, Target, Calendar } from "lucide-react"
+import { ArrowLeft, BarChart3, Pill, Target, Calendar, User, Trophy } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -19,7 +19,8 @@ export default function ComparePage() {
   // Group cycles by type for summary display
   const cyclesByType = {
     retrieval: availableCycles.filter(c => c.cycleGoal === "retrieval"),
-    transfer: availableCycles.filter(c => c.cycleGoal === "transfer")
+    transfer: availableCycles.filter(c => c.cycleGoal === "transfer"),
+    iui: availableCycles.filter(c => c.cycleGoal === "iui")
   }
   
   // Determine the required cycle type based on selected cycles
@@ -67,20 +68,67 @@ export default function ComparePage() {
             Cycle Comparison
           </h1>
           <p className="text-muted-foreground mt-1">
-            Compare medications, protocols, timelines, and outcomes across IVF cycles of the same treatment type
+            Compare medications, protocols, timelines, and outcomes across IVF cycles
           </p>
         </div>
 
-        {/* Cycle Selection */}
-        <Card>
+        {/* Comparison Types */}
+        <div className="grid md:grid-cols-2 gap-4">
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                My Cycles
+              </CardTitle>
+              <CardDescription>
+                Compare your own cycles to track progress and identify patterns
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Available: {availableCycles.length} cycle{availableCycles.length !== 1 ? 's' : ''}
+              </p>
+              <Button asChild className="w-full">
+                <Link href="#my-cycles">
+                  Compare My Cycles
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="hover:shadow-md transition-shadow">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Trophy className="h-5 w-5" />
+                Compare vs Other Members
+              </CardTitle>
+              <CardDescription>
+                Compare your best cycle with other community members' best performing cycles
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Find whose best cycle performed better based on your chosen metric
+              </p>
+              <Button asChild variant="outline" className="w-full">
+                <Link href="/compare/best-vs-best">
+                  Compare vs Others
+                </Link>
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* My Cycles Comparison */}
+        <Card id="my-cycles">
           <CardHeader>
             <CardTitle>Select Cycles to Compare</CardTitle>
             <CardDescription>
               Choose up to 3 cycles of the same type to compare side-by-side. 
-              Only Egg Retrieval cycles can be compared with other Egg Retrievals, and Transfer cycles with other Transfers.
+              Only cycles of the same treatment type can be compared together (Retrieval with Retrieval, Transfer with Transfer, IUI with IUI).
               {availableCycles.length > 0 && (
                 <span className="block mt-2 text-xs text-muted-foreground">
-                  Available: {cyclesByType.retrieval.length} Retrieval cycle{cyclesByType.retrieval.length !== 1 ? 's' : ''}, {cyclesByType.transfer.length} Transfer cycle{cyclesByType.transfer.length !== 1 ? 's' : ''}
+                  Available: {cyclesByType.retrieval.length} Retrieval cycle{cyclesByType.retrieval.length !== 1 ? 's' : ''}, {cyclesByType.transfer.length} Transfer cycle{cyclesByType.transfer.length !== 1 ? 's' : ''}, {cyclesByType.iui.length} IUI cycle{cyclesByType.iui.length !== 1 ? 's' : ''}
                 </span>
               )}
             </CardDescription>
@@ -111,7 +159,7 @@ export default function ComparePage() {
                         if (filteredCycles.length === 0) {
                           return (
                             <div className="p-2 text-sm text-muted-foreground text-center">
-                              No more {requiredCycleType === "retrieval" ? "Egg Retrieval" : "Transfer"} cycles available
+                              No more {requiredCycleType === "retrieval" ? "Egg Retrieval" : requiredCycleType === "transfer" ? "Transfer" : "IUI"} cycles available
                             </div>
                           )
                         }
@@ -125,7 +173,7 @@ export default function ComparePage() {
                             <div className="flex items-center gap-2">
                               <span>{cycle.name}</span>
                               <Badge variant="outline" className="text-xs">
-                                {cycle.cycleGoal === "retrieval" ? "Retrieval" : "Transfer"}
+                                {cycle.cycleGoal === "retrieval" ? "Retrieval" : cycle.cycleGoal === "transfer" ? "Transfer" : "IUI"}
                               </Badge>
                             </div>
                           </SelectItem>
@@ -141,7 +189,7 @@ export default function ComparePage() {
             {requiredCycleType && (
               <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
                 <p className="text-sm text-blue-800">
-                  <strong>Comparing {requiredCycleType === "retrieval" ? "Egg Retrieval" : "Transfer"} cycles only.</strong>{" "}
+                  <strong>Comparing {requiredCycleType === "retrieval" ? "Egg Retrieval" : requiredCycleType === "transfer" ? "Transfer" : "IUI"} cycles only.</strong>{" "}
                   Only cycles of the same treatment type can be meaningfully compared. 
                   Clear your selection to compare different cycle types.
                 </p>
@@ -203,7 +251,7 @@ export default function ComparePage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Badge variant="default" className="bg-blue-600">
-                      {requiredCycleType === "retrieval" ? "Egg Retrieval" : "Transfer"} Comparison
+                      {requiredCycleType === "retrieval" ? "Egg Retrieval" : requiredCycleType === "transfer" ? "Transfer" : "IUI"} Comparison
                     </Badge>
                     <span className="text-sm text-muted-foreground">
                       Comparing {selectedCycleObjects.length} cycle{selectedCycleObjects.length !== 1 ? 's' : ''}

@@ -20,6 +20,7 @@ export interface UnifiedDayMedications {
     minute: string
     ampm: string
     refrigerated: boolean
+    trigger: boolean
     taken: boolean
     skipped: boolean
     takenAt?: string
@@ -48,6 +49,7 @@ export function getUnifiedMedicationsForDay(
     )
 
     result.scheduled = todaysMedications.map(medication => {
+      console.log(`🔍 Processing scheduled medication: ${medication.name}, trigger: ${medication.trigger}`)
       const status = dailyStatus?.medications.find(m => m.scheduledMedicationId === medication.id)
       return {
         medication,
@@ -64,7 +66,19 @@ export function getUnifiedMedicationsForDay(
 
   // Get day-specific medications
   if (dailyStatus?.daySpecificMedications) {
-    result.daySpecific = [...dailyStatus.daySpecificMedications]
+    console.log(`🔍 Found ${dailyStatus.daySpecificMedications.length} day-specific medications for day ${cycleDay}`)
+    result.daySpecific = dailyStatus.daySpecificMedications.map(med => {
+      console.log(`🔍 Processing day-specific medication: ${med.name}`)
+      console.log(`   - Raw trigger value: ${med.trigger}`)
+      console.log(`   - Trigger field exists: ${'trigger' in med}`)
+      const preservedTrigger = med.trigger || false
+      console.log(`   - Final trigger value: ${preservedTrigger}`)
+      return {
+        ...med,
+        trigger: preservedTrigger
+      }
+    })
+    console.log(`🔍 Processed day-specific medications:`, result.daySpecific)
   }
 
   result.totalCount = result.scheduled.length + result.daySpecific.length
