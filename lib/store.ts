@@ -74,6 +74,9 @@ interface IVFStore {
   addCleanDaySpecificMedication: (cycleId: string, cycleDay: number, date: string, medication: Omit<import('./clean-medication-system').DaySpecificMedication, 'id'>) => void
   updateCleanDaySpecificMedication: (cycleId: string, cycleDay: number, medicationId: string, medication: Partial<Omit<import('./clean-medication-system').DaySpecificMedication, 'id'>>) => void
   deleteCleanDaySpecificMedication: (cycleId: string, cycleDay: number, medicationId: string) => void
+  
+  // User-specific data loading
+  loadUserData: (userId: string) => void
 }
 
 export const useIVFStore = create<IVFStore>()(
@@ -946,9 +949,85 @@ export const useIVFStore = create<IVFStore>()(
           console.error('Failed to delete day-specific medication:', error)
         }
       },
+
+      loadUserData: (userId: string) => {
+        try {
+          console.log('Loading data for user:', userId)
+          const userData = localStorage.getItem(`ivf-tracker-storage-${userId}`)
+          console.log('User data from localStorage:', userData ? 'Found' : 'Not found')
+          
+          if (userData) {
+            const parsedData = JSON.parse(userData)
+            console.log('Parsed user data:', parsedData)
+            if (parsedData.state) {
+              set(parsedData.state)
+              console.log('Set user state with userProfile:', parsedData.state.userProfile)
+            }
+          } else {
+            console.log('No user data found, initializing empty state')
+            // Initialize empty state for new user
+            set({
+              cycles: [],
+              procedures: [],
+              naturalPregnancies: [],
+              medicationSchedules: [],
+              dailyMedicationStatuses: [],
+              userProfile: null,
+              medications: []
+            })
+          }
+        } catch (error) {
+          console.error('Failed to load user data:', error)
+        }
+      },
     }),
     {
       name: "ivf-tracker-storage",
+      // Custom storage to handle user-specific data
+      storage: {
+        getItem: (name: string) => {
+          // Get current user from auth store
+          const authData = localStorage.getItem('ivf-tracker-auth')
+          if (!authData) return null
+          
+          const parsedAuthData = JSON.parse(authData)
+          const currentUser = parsedAuthData.state?.currentUser
+          
+          if (!currentUser) return null
+          
+          // Use user-specific storage key
+          const userStorageKey = `${name}-${currentUser.id}`
+          return localStorage.getItem(userStorageKey)
+        },
+        setItem: (name: string, value: string) => {
+          // Get current user from auth store
+          const authData = localStorage.getItem('ivf-tracker-auth')
+          if (!authData) return
+          
+          const parsedAuthData = JSON.parse(authData)
+          const currentUser = parsedAuthData.state?.currentUser
+          
+          if (!currentUser) return
+          
+          // Use user-specific storage key
+          const userStorageKey = `${name}-${currentUser.id}`
+          localStorage.setItem(userStorageKey, value)
+        },
+        removeItem: (name: string) => {
+          // Get current user from auth store
+          const authData = localStorage.getItem('ivf-tracker-auth')
+          if (!authData) return
+          
+          const parsedAuthData = JSON.parse(authData)
+          const currentUser = parsedAuthData.state?.currentUser
+          
+          if (!currentUser) return
+          
+          // Use user-specific storage key
+          const userStorageKey = `${name}-${currentUser.id}`
+          localStorage.removeItem(userStorageKey)
+        },
+      },
     },
   ),
 )

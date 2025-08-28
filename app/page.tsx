@@ -8,11 +8,14 @@ import { CycleCard } from "@/components/cycle-card"
 import { ProcedureCard } from "@/components/procedure-card"
 import { AboutMeCard } from "@/components/about-me-card"
 import { NaturalPregnancyCard } from "@/components/natural-pregnancy-card"
+import { UserMenu } from "@/components/auth/user-menu"
 import { useIVFStore } from "@/lib/store"
+import { useAuthStore } from "@/lib/auth-store"
 import { parseISO } from "date-fns"
 
 export default function Home() {
   const { cycles, procedures, naturalPregnancies } = useIVFStore()
+  const { currentUser } = useAuthStore()
 
   // Combine cycles, procedures, and natural pregnancies and sort by date
   const combinedItems = [
@@ -37,9 +40,17 @@ export default function Home() {
     <div className="container max-w-4xl py-10">
       <div className="mb-8 space-y-6">
         {/* Header section */}
-        <div className="text-center lg:text-left">
-          <h1 className="text-3xl font-bold tracking-tight">IVF Tracker</h1>
-          <p className="text-muted-foreground mt-1">Track your IVF journey, medications, and appointments</p>
+        <div className="flex items-start justify-between">
+          <div className="text-center lg:text-left">
+            <h1 className="text-3xl font-bold tracking-tight">IVF Tracker</h1>
+            <p className="text-muted-foreground mt-1">Track your IVF journey, medications, and appointments</p>
+            {currentUser && (
+              <p className="text-sm text-muted-foreground mt-2">
+                Welcome back, <span className="font-medium">{currentUser.displayName}</span>
+              </p>
+            )}
+          </div>
+          <UserMenu />
         </div>
         
         {/* Action buttons */}

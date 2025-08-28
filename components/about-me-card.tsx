@@ -234,7 +234,7 @@ const countryOptions = [
 
 const ivfReasonOptions = [
   { value: "low-amh", label: "Low AMH" },
-  { value: "dor", label: "DOR (Diminished Ovarian Reserve)" },
+  { value: "dor", label: "Diminished Ovarian Reserve (DOR)" },
   { value: "premature-ovarian-failure", label: "Premature Ovarian Failure" },
   { value: "endo", label: "Endometriosis" },
   { value: "adenomyosis", label: "Adenomyosis" },

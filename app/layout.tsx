@@ -1,12 +1,13 @@
 import type { Metadata } from 'next'
 import { GeistSans } from 'geist/font/sans'
 import { GeistMono } from 'geist/font/mono'
+import { AuthWrapper } from '@/components/auth/auth-wrapper'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'v0 App',
-  description: 'Created with v0',
-  generator: 'v0.dev',
+  title: 'IVF Tracker',
+  description: 'Track your IVF journey with detailed cycle management, medication schedules, and outcome analysis',
+  generator: 'Next.js',
 }
 
 export default function RootLayout({
@@ -25,7 +26,11 @@ html {
 }
         `}</style>
       </head>
-      <body>{children}</body>
+      <body>
+        <AuthWrapper>
+          {children}
+        </AuthWrapper>
+      </body>
     </html>
   )
 }
